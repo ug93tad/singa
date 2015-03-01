@@ -13,15 +13,6 @@ Worker::Worker(shared_ptr<Cluster> cluster){
 
 void Worker::Start(ModelProto model){
   LOG(ERROR)<<"Worker on "<<cluster_->hostname()<<" is starting...";
-  // update proto_, all groups will do the training, but only the first group
-  // conduts test/validation. Hence, the training mini-batch is partitioned
-  // onto all groups.
-  if(cluster_->groupid()==0){
-    int ngroups=cluster_->ngroups();
-    model.set_validation_frequency(
-        model.validation_frequency()/ngroups);
-    model.set_test_frequency(model.test_frequency()/ngroups);
-  }
   train_net_=SetupNeuralNet(model.neuralnet(), model.prefetch(), kTrain);
   if(model.test_steps()){
     test_net_=SetupNeuralNet(model.neuralnet(), model.prefetch(), kTest);

@@ -42,7 +42,7 @@ do
   if [ $1 == "ls" ]
   then
     echo "ssh $i"
-    ssh $i "ls -l $folder "
+    ssh $i "ls -l $2 "
   fi
   if [ $1 == "ssh" ]
   then
@@ -51,8 +51,8 @@ do
   fi
   if [ $1 == "delete" -o $1 == "reset" ]
   then
-    echo "delete $folder on $i"
-    ssh $i "rm -rf $folder"
+    echo "delete $2 on $i"
+    ssh $i "rm -rf $2"
   fi
   if [ $1 == "create" -o $1 == "reset" ]
   then

@@ -22,15 +22,15 @@ class Param {
   /**
    * handle put msg by server
    */
-  virtual zmsg_t* HandlePutMsg(zmsg_t* msg);
+  virtual zmsg_t* HandlePutMsg(zmsg_t** msg);
   /**
    * handle get msg by server
    */
-  virtual zmsg_t* HandleGetMsg(zmsg_t* msg);
+  virtual zmsg_t* HandleGetMsg(zmsg_t** msg);
   /**
    * handle sync msg by server
    */
-  virtual zmsg_t* HandleSyncMsg(zmsg_t* msg)=0;
+  virtual zmsg_t* HandleSyncMsg(zmsg_t** msg)=0;
   /**
    * gen sync msg by worker
    */
@@ -38,7 +38,7 @@ class Param {
   /**
    * parse sync msg by worker
    */
-  virtual void ParseSyncMsgFromPS(zmsg_t* msg)=0;
+  virtual void ParseSyncMsgFromPS(zmsg_t** msg)=0;
 
   /**
    * setup param shape
@@ -145,9 +145,9 @@ class Param {
  */
 class RandomSyncParam: public Param{
  public:
-  virtual zmsg_t* HandleSyncMsg(zmsg_t* msg);
+  virtual zmsg_t* HandleSyncMsg(zmsg_t** msg);
   virtual zmsg_t *GenSyncMsgFromWorker(float sample_ratio);
-  virtual void ParseSyncMsgFromPS(zmsg_t* msg);
+  virtual void ParseSyncMsgFromPS(zmsg_t** msg);
   virtual void Setup(const ParamProto& proto, const vector<int>& shape, int fan_in);
   virtual void Init();
 
@@ -169,9 +169,9 @@ class RandomSyncParam: public Param{
  */
 class ElasticParam: public Param{
  public:
-  virtual zmsg_t* HandleSyncMsg(zmsg_t* msg);
+  virtual zmsg_t* HandleSyncMsg(zmsg_t** msg);
   virtual zmsg_t *GenSyncMsgFromWorker(float moving_rate);
-  virtual void ParseSyncMsgFromPS(zmsg_t* msg);
+  virtual void ParseSyncMsgFromPS(zmsg_t** msg);
 };
 
 

@@ -214,7 +214,7 @@ void ParamManager::WaitUpdate(shared_ptr<Param> param, int step, int local_threa
       delete idstr;
 
       CHECK(paramid2Param_.find(id)!=paramid2Param_.end());
-      paramid2Param_[id]->ParseSyncMsgFromPS(msg);
+      paramid2Param_[id]->ParseSyncMsgFromPS(&msg);
       zmsg_destroy(&msg);
       paramid2version_[id]=step;
       int ownerid=paramid2Param_[id]->owner()->id();

@@ -13,12 +13,12 @@
 *.cproject
 *.log
 *.nfs*
-loader
+script/*
+!script/*.py
+!script/*.sh
+!script/*.awk
 tmp
-out
 log*
-latency*
-throughput*
 cscope.*
 build/
 tmp/

@@ -25,19 +25,19 @@ void HandleSyncFromWorker(zsock_t* pipe, void* args){
     zmsg_t* msg=zmsg_recv(pipe);
     if(!msg) break;
     idstr=zmsg_popstr(msg);
-    if(streq(idstr, "$TERM"))
+    if(streq(idstr, "$TERM")){
       terminated=true;
-    else{
+      zmsg_destroy(&msg);
+    } else{
       sscanf(idstr, "%d", &id);
       zframe_t* identity=zmsg_pop(msg);
-      zmsg_t* reply=params->at(id)->HandleSyncMsg(msg);
+      zmsg_t* reply=params->at(id)->HandleSyncMsg(&msg);
       CHECK_NOTNULL(reply);
       zmsg_pushstr(reply, idstr);
       zmsg_pushstrf(reply, "%d", kSync);
       zmsg_prepend(reply, &identity);
       zmsg_send(&reply,pipe);
     }
-    zmsg_destroy(&msg);
     delete idstr;
   }
 }
@@ -61,6 +61,8 @@ void Server::Run(){
 
   std::map<int, bool> locks; // TODO avoid actors updates the same Param
   std::list<std::tuple<int, zframe_t*, zmsg_t*>> getRequest;
+  std::list<std::tuple<int, zframe_t*, zmsg_t*>> syncRequest;
+  std::map<zactor_t*, int> actor2paramid;
 
   int nstop=0; // stop server when recv nstop msgs, one from a worker
   int id, type;
@@ -81,14 +83,13 @@ void Server::Run(){
             if(params.find(id)==params.end()){
               // the requested Param is not available, repsond later
               getRequest.push_back(
-                  std::make_tuple(id, zframe_dup(identity), msg));
+                  std::make_tuple(id, identity, msg));
             }else{// response msg of the same structure as recv msg.
-              zmsg_t* reply=params[id]->HandleGetMsg(msg);
+              zmsg_t* reply=params[id]->HandleGetMsg(&msg);
               zmsg_pushstrf(reply, "%d", id);
               zmsg_pushstrf(reply, "%d", kGet);
               zmsg_prepend(reply, &identity);
               zmsg_send(&reply, router);
-              zmsg_destroy(&msg);
             }
           }
           break;
@@ -102,14 +103,14 @@ void Server::Run(){
               params[id]->set_id(id);
               locks[id]=false;
             }
-            params[id]->HandlePutMsg(msg);
-            zmsg_destroy(&msg);
+            params[id]->HandlePutMsg(&msg);
             zframe_destroy(&identity);
           }
           break;
         case kSync:
           {
             idstr=zmsg_popstr(msg); sscanf(idstr, "%d", &id); delete idstr;
+            /*
             {// monitor network throught put for recving msgs.
               if(start==0)
                 start=zclock_mono();
@@ -125,14 +126,19 @@ void Server::Run(){
               sscanf(control, "%u-%d", &seed, &count); delete control;
               dsize+=count;
             }
+            */
             if(!locks[id]){
               CHECK(!actors.empty());
               zmsg_prepend(msg, &identity);
               zmsg_pushstrf(msg, "%d", id);
               CHECK(!actors.empty());
               zactor_send(actors.front(), &msg);
+              locks[id]=true;
+              actor2paramid[actors.front()]=id;
               actors.pop();
-              //locks[id]=true;
+            }else{
+              syncRequest.push_back(
+                  std::make_tuple(id, identity, msg));
             }
           }
           break;
@@ -146,6 +152,24 @@ void Server::Run(){
       actors.push(actor);
       zmsg_t* msg=zactor_recv(actor);
       zmsg_send(&msg, router);
+      locks[actor2paramid[actor]]=false;
+    }
+
+    for(auto it=getRequest.begin();it!=getRequest.end();){
+      int id=std::get<0>(*it);
+      if(params.find(id)!=params.end()){
+        zframe_t* identity=std::get<1>(*it);
+        zmsg_t* msg=std::get<2>(*it);
+        CHECK_NOTNULL(msg);
+        zmsg_t* reply=params[id]->HandleGetMsg(&msg);
+        zmsg_pushstrf(reply, "%d", id);
+        zmsg_pushstrf(reply, "%d", kGet);
+        zmsg_prepend(reply, &identity);
+        zmsg_send(&reply, router);
+        it=getRequest.erase(it);
+      }else{
+        it++;
+      }
     }
     if(actors.empty()){
       CHECK_EQ(0,zpoller_remove(poller, router));
@@ -154,20 +178,22 @@ void Server::Run(){
       zmsg_t* msg=zactor_recv(actor);
       zmsg_send(&msg, router);
       CHECK_EQ(0,zpoller_add(poller, router));
+      locks[actor2paramid[actor]]=false;
     }
-
-    for(auto it=getRequest.begin();it!=getRequest.end();){
+    for(auto it=syncRequest.begin();it!=syncRequest.end();){
       int id=std::get<0>(*it);
-      if(params.find(id)!=params.end()){
+      if(!locks[id]){
+        CHECK(!actors.empty());
         zframe_t* identity=std::get<1>(*it);
         zmsg_t* msg=std::get<2>(*it);
-        zmsg_t* reply=params[id]->HandleGetMsg(msg);
-        zmsg_pushstrf(reply, "%d", id);
-        zmsg_pushstrf(reply, "%d", kGet);
-        zmsg_prepend(reply, &identity);
-        zmsg_send(&reply, router);
-        zmsg_destroy(&msg);
-        it=getRequest.erase(it);
+        CHECK_NOTNULL(msg);
+        zmsg_prepend(msg, &identity);
+        zmsg_pushstrf(msg, "%d", id);
+        zactor_send(actors.front(), &msg);
+        locks[id]=true;
+        actor2paramid[actors.front()]=id;
+        actors.pop();
+        it=syncRequest.erase(it);
       }else{
         it++;
       }
