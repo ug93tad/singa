@@ -4,7 +4,7 @@
 #include <pthread.h>
 
 #include "worker/neuralnet.h"
-#include "worker/param_manager.h"
+#include "utils/param_manager.h"
 #include "proto/model.pb.h"
 #include "utils/cluster.h"
 

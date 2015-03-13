@@ -3,7 +3,8 @@
 #include <fstream>
 #include "utils/cluster.h"
 #include "proto/cluster.pb.h"
-
+#include <sys/stat.h>
+#include <sys/types.h>
 namespace singa {
 
 std::shared_ptr<Cluster> Cluster::instance_;

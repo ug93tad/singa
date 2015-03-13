@@ -1,5 +1,5 @@
 #include "utils/cluster.h"
-#include "worker/param_manager.h"
+#include "utils/param_manager.h"
 #include "utils/singleton.h"
 #include "utils/factory.h"
 
@@ -7,7 +7,10 @@
 namespace singa{
 
 ParamManager::ParamManager(shared_ptr<NeuralNet> net,
-    const UpdaterProto& updater):net_(net){
+    const UpdaterProto& updater, vector<int>* neighbors):net_(net){
+
+	neighbors_ = neighbors;
+
   shared_ptr<Cluster> cluster=Cluster::Get();
   hogwild_=cluster->nthreads_per_procs()==1||updater.hogwild()?true:false;
   sync_frequency_=updater.sync_frequency();
