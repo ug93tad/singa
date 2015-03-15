@@ -1,0 +1,13 @@
+package singa;
+
+message ServerConfig{
+	required int32 id = 1; 
+	required string ip = 2; 
+	required int32 port = 3; 
+	repeated int32 neighbor = 4; //upstream neighbors
+}
+
+message Topology{
+	required sync_interval = 6; //how many update (per Param) before syncing
+	repeated ServerConfig server = 5; //parameter server network
+}

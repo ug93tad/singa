@@ -17,6 +17,9 @@ DEFINE_string(cluster_conf, "examples/imagenet12/cluster.conf",
 DEFINE_string(model_conf, "examples/imagenet12/model.conf",
     "Deep learning model configuration file");
 
+DEFINE_string(topology,"examples/imagenet12/topology.conf", "Network of servers");
+DEFINE_int32(server_threads,1,"Number of server's worker threads per process");
+
 /**
  * Registry Layer sub-classes and Param sub-classes.
  * User implemented Layer or Param sub-classes should be registryed here.

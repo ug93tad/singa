@@ -13,12 +13,25 @@ enum kMsgType{
 kGet=0,
 kPut=1,
 kSync=2,
-kStop
+kUpdate=3,
+kSyncRequest=4,
+kSyncResponse=5,
+kStop=6,
+kData=7
 };
 class Param {
  public:
    Param();
    virtual ~Param();
+
+  //Anh's stuff
+   virtual zmsg_t* ParseToMsg()=0; /** Parse Param's content to zmsg_t message */
+
+   virtual Param* ParseToParam(zmsg_t **msg)=0;
+
+   //End of Anh's stuff
+
+
   /**
    * handle put msg by server.
    * Return NULL if successful
