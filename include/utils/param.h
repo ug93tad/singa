@@ -25,8 +25,10 @@ class Param {
    virtual ~Param();
 
   //Anh's stuff
+   //return only the content
    virtual zmsg_t* ParseToMsg()=0; /** Parse Param's content to zmsg_t message */
 
+   //msg of the format <kData><paramId><content>
    virtual Param* ParseToParam(zmsg_t **msg)=0;
 
    //End of Anh's stuff

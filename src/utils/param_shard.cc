@@ -26,6 +26,11 @@ zmsg_t* ParamShard::update(int paramId, zmsg_t **msg){
 		update_counters_[paramId]++;
 }
 
+//same as update for now
+zmsg_t* ParamShard::sync_update(int paramId, zmsg_t **msg){
+	return this->update(paramId, msg);
+}
+
 zmsg_t* ParamShard::put(int paramId, zmsg_t **msg){
 	Param *param = new Param();
 	param->HandlePutMsg(msg);
@@ -41,6 +46,11 @@ bool ParamShard::sync_now(int paramId){
 		return true;
 	}
 	return false;
+}
+
+bool ParamShard::is_local(int paramId){
+	map<int, Param*>::iterator it = this->params_.find(paramId);
+	return it==this->params_.end();
 }
 } // namespace singa
 

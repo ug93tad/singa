@@ -7,8 +7,8 @@
 #include <map>
 #include "utils/param_shard.h"
 #include "proto/topology.pb.h"
+#include "utils/pm_base.h"
 using std::vector;
-using std::map;
 using std::shared_ptr;
 using google::protobuf::Message;
 
@@ -25,7 +25,7 @@ namespace singa{
  * created in the main thread.
  *
  * Messages processed by the PMServer object are of the format:
- * <worker id>  <content>
+ * <worker id><worker thread id>  <content>
  */
 class PMServer: public PMBase{
 public:
@@ -58,13 +58,10 @@ public:
 	zmsg_t* HandleSyncRequest(int paramId, zmsg_t** msg);
 
 	/**
-	 * Process the Sync response from a neighbor server. Return values
-	 * are the same as HandleGet/Update
+	 * Simply update, do not send response back.
 	 */
 	zmsg_t* HandleSyncResponse(int paramId, zmsg_t** msg);
 
-	//helper method to pack up response into a zmsg_t message
-	zmsg_t* process_result(zmsg_t **identity, zmsg_t **data, int type, int paramId);
 };
 
 /**
@@ -84,7 +81,7 @@ public:
  * ParamBase object at each server thread.
  *
  * The message received by the server is of the form:
- * <worker id><type | <REQUEUE_ID><worker id> ><paramId><content>
+ * <worker id><worker_thread_id><type | <REQUEUE_ID><worker id> ><paramId><content>
  *
  * from which the 2nd and 3rd are stripped before passing to the PMServer object.
  */
@@ -94,13 +91,14 @@ public:
 	void StartServer();
 	ParamShard* param_shard(){ return param_shard_;} /** To be shared among PMBase object at each thread */
 	int id(){ return id_;}
-
+	char *backend_endpoint(){ return backend_endpoint_;}
+	char *frontend_endpoint(){ return frontend_endpoint_;}
 private:
 	int id_;
 	char frontend_endpoint_[256], backend_endpoint_[256]; /** socket addresses */
 	ParamShard* param_shard_;
 
-	map<int, char*> neighbors_;
+	vector<char*> neighbors_;
 };
 
 // Zthread function, which is in the global namespace.

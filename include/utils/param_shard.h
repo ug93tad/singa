@@ -9,6 +9,9 @@
 #define PARAM_SHARD_H_
 
 #include "utils/param.h"
+#include <map>
+using std::map;
+
 /**
  * A shard (collection) of Param objects, to be shared between different thread (PMServer and PMClient).
  * These are local objects.
@@ -27,10 +30,14 @@ public:
 
 	int id(){ return id_;}
 
+	bool is_local(int paramId); /**< true if paramID is a local key */
+
 	//all zmsg_t messages are destroyed by the Param object
 	zmsg_t* get(int paramId, zmsg_t **msg); /**< local get, assuming the Param object is present */
 	zmsg_t* update(int paramId, zmsg_t **msg); /**< local update, return true if sucessful */
 	zmsg_t* put(int paramId, zmsg_t **msg); /**< insert to local shard */
+	zmsg_t *sync_update(int paramId, zmsg_t **msg); /**< sync param with new data */
+
 	bool sync_now(int paramId); /**< true if time to sync this param object with other servers */
 private:
 	int id_;
