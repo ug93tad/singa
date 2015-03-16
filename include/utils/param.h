@@ -25,11 +25,11 @@ class Param {
    virtual ~Param();
 
   //Anh's stuff
-   //return only the content
-   virtual zmsg_t* ParseToMsg()=0; /** Parse Param's content to zmsg_t message */
+   //return only <content>
+   virtual zmsg_t* ParseToMsg(); /** Parse Param's content to zmsg_t message */
 
    //msg of the format <kData><paramId><content>
-   virtual Param* ParseToParam(zmsg_t **msg)=0;
+   virtual Param* ParseToParam(zmsg_t **msg);
 
    //End of Anh's stuff
 
@@ -58,11 +58,11 @@ class Param {
   /**
    * gen sync msg by worker
    */
-  virtual zmsg_t *GenSyncMsgFromWorker(float sample_ratio);
+  zmsg_t *GenSyncMsgFromWorker(float sample_ratio){return NULL;}
   /**
    * parse sync msg by worker
    */
-  virtual void ParseSyncMsgFromPS(zmsg_t** msg);
+  void ParseSyncMsgFromPS(zmsg_t** msg){}
 
   /**
    * setup param shape

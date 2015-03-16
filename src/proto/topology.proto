@@ -13,7 +13,7 @@ message ServerSet{
 }
 
 message Topology{
-	required sync_interval = 6; //how many update (per Param) before syncing
+	required int32 sync_interval = 6; //how many update (per Param) before syncing
 	repeated ServerConfig server = 5; //parameter server network	
 	repeated ServerSet primary_set = 7; 
 }

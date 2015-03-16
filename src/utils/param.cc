@@ -120,7 +120,7 @@ zmsg_t* RandomSyncParam::HandleSyncMsg(zmsg_t** msg){
   CHECK_EQ(zframe_size(syncframe), count*sizeof(float));
   float* syncptr=(float*)zframe_data(syncframe);
   float* dptr=data_.mutable_cpu_data();
-  int k=0;r
+  int k=0;
   if(count==data_.count()){
     for(int idx=0;idx<count;idx++){
       float x=dptr[idx];

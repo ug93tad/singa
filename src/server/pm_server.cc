@@ -12,18 +12,16 @@
 #include <string.h>
 #include <czmq.h>
 #include <stdlib.h>
-#include <set>
 #include "server/pm_server.h"
 #include "proto/topology.pb.h"
 
 #include <google/protobuf/text_format.h>
-#include <goodle/protobuf/io/zero_copy_stream_impl.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 DECLARE_string(topology_config);
 DECLARE_int32(server_threads);
 
-using namespace google::protobuf:io;
+using namespace google::protobuf::io;
 using google::protobuf::TextFormat;
-using std::set;
 
 namespace singa{
 
@@ -36,18 +34,18 @@ SingaServer::SingaServer(int id){
 	Topology topology;
 	TextFormat::Parse(new FileInputStream(fd), &topology);
 	int n_servers = topology.server_size();
-	map<int, ServerConfig*> other_servers;
+	map<int, char*> other_servers;
 
 
 	for (int i=0; i<n_servers; i++){
 		ServerConfig *server = topology.mutable_server(i);
 		if (server->id()==id_){
-			sprintf(frontend_endpoint_,"tcp://%s:%d",server->ip(),server->port());
+			sprintf(frontend_endpoint_,"tcp://%s:%d",server->ip().c_str(),server->port());
 			sprintf(backend_endpoint_,"inproc://singanus:%d",id_);
 		}
 		else {
 			char *neighbor_endpoint = (char*)malloc(256);
-			sprintf(neighbor_endpoint,"tcp://%s:%d",server->ip(),server->port());
+			sprintf(neighbor_endpoint,"tcp://%s:%d",server->ip().c_str(),server->port());
 			other_servers[server->id()] = neighbor_endpoint;
 		}
 	}
@@ -100,17 +98,17 @@ void SingaServer::StartServer() {
 		if (rc < 0)
 			break;
 
-		if (items[0].revent & ZMQ_POLLIN) {
+		if (items[0].revents & ZMQ_POLLIN) {
 			zmsg_t *msg = zmsg_recv(frontend);
 			if (!msg)
 				break;
 			//send to backend
 			zmsg_send(&msg, backend);
 		}
-		if (items[1].reevent & ZMQ_POLLIN) {
+		if (items[1].revents & ZMQ_POLLIN) {
 			zmsg_t *msg = zmsg_recv(backend);
-			if (!msg)	break;
-
+			if (!msg)
+				break;
 			//if SYNC message -> forward to all the neighbors
 			//also forward to the frontend.
 			zframe_t *first = zmsg_pop(msg);
@@ -123,16 +121,16 @@ void SingaServer::StartServer() {
 					zframe_destroy(&type);
 					zmsg_pushstrf(dup,"%d",kSyncRequest);
 					zmsg_prepend(dup,&tid);
-					zmsg_preprend(dup,&id);
+					zmsg_prepend(dup,&id);
 					zmsg_send(&dup,neighbor_socket[i]);
 				}
 			}
 			zframe_destroy(&first);
-			msg_send(&msg, frontend);
+			zmsg_send(&msg, frontend);
 		}
 
 		for (int i = 2; i < nsockets; i++)
-			if (items[i].revent & ZMQ_POLLIN) {
+			if (items[i].revents & ZMQ_POLLIN) {
 				zmsg_t *msg = zmsg_recv(neighbor_socket[i - 2]);
 				if (!msg) {
 					is_running = false;
@@ -150,7 +148,7 @@ void SingaServer::StartServer() {
 	zctx_destroy (&context);
 }
 
-void ServerThread(void *args, ztcx_t *ctx, void *pipe){
+void ServerThread(void *args, zctx_t *ctx, void *pipe){
 	SingaServer *server = static_cast<SingaServer*>(args);
 
 	//create and connect socket
@@ -243,7 +241,7 @@ zmsg_t* PMServer::HandleGet(int paramId, zmsg_t **msg){
 		zmsg_pushstrf(param, "%d", paramId);
 		zmsg_pushstrf(param, "%d", kData);
 		zmsg_prepend(param, &thread_id);
-		zmsg_preprend(param, &identity);
+		zmsg_prepend(param, &identity);
 		zmsg_pushstr(param, RESPONSE_HEADER);
 
 		//send off
@@ -254,8 +252,8 @@ zmsg_t* PMServer::HandleGet(int paramId, zmsg_t **msg){
 		zmsg_t *response = zmsg_new();
 		zmsg_pushstrf(response, "%d", paramId);
 		zmsg_pushstrf(response, "%d", kGet);
-		zmsg_preprend(response, &thread_id);
-		zmsg_preprend(response, &identity);
+		zmsg_prepend(response, &thread_id);
+		zmsg_prepend(response, &identity);
 		zmsg_pushstr(response, REQUEUE_ID);
 		//the calling function will send this message off
 		return response;
@@ -273,22 +271,22 @@ zmsg_t* PMServer::HandleUpdate(int paramId, zmsg_t **msg) {
 		//repsonse of the format: <identity><type: kData><paramId><param content>
 		zmsg_pushstrf(param, "%d", paramId);
 		zmsg_pushstrf(param, "%d", kData);
-		zmsg_preprend(param, &thread_id);
-		zmsg_preprend(param, &identity);
+		zmsg_prepend(param, &thread_id);
+		zmsg_prepend(param, &identity);
 		zmsg_pushstr(param, this->param_shard()->sync_now(paramId)?SYNC_MSG:RESPONSE_HEADER);
 
 		//send off
 		zmsg_send(&param, this->socket_);
 		zmsg_destroy(&content);
-		zmsg_destroy(&identity);
-		zmsg_destroy(&thread_id);
+		zframe_destroy(&identity);
+		zframe_destroy(&thread_id);
 		return NULL;
 	} else {
 		//re-construct msg to be re-queued.
 		zmsg_pushstrf(content, "%d", paramId);
 		zmsg_pushstrf(content, "%d", kUpdate);
-		zmsg_preprend(content, &thread_id);
-		zmsg_preprend(content, &identity);
+		zmsg_prepend(content, &thread_id);
+		zmsg_prepend(content, &identity);
 		zmsg_pushstr(content, REQUEUE_ID);
 		//the calling function will send this message off
 		return content;
@@ -304,8 +302,8 @@ zmsg_t* PMServer::HandleSyncRequest(int paramId, zmsg_t **msg){
 		//repsonse of the format: <identity><type: kData><id><param content>
 		zmsg_pushstrf(param, "%d", paramId);
 		zmsg_pushstrf(param, "%d", kSyncResponse);
-		zmsg_preprend(param, &thread_id);
-		zmsg_preprend(param, &identity);
+		zmsg_prepend(param, &thread_id);
+		zmsg_prepend(param, &identity);
 		zmsg_pushstr(param, RESPONSE_HEADER);
 
 		//send off
@@ -316,8 +314,8 @@ zmsg_t* PMServer::HandleSyncRequest(int paramId, zmsg_t **msg){
 		//re-construct msg to be re-queued.
 		zmsg_pushstrf(content, "%d", paramId);
 		zmsg_pushstrf(content, "%d", kSyncRequest);
-		zmsg_preprend(content, &thread_id);
-		zmsg_preprend(content, &identity);
+		zmsg_prepend(content, &thread_id);
+		zmsg_prepend(content, &identity);
 		zmsg_pushstr(content, REQUEUE_ID);
 		//the calling function will send this message off
 		return content;
@@ -326,7 +324,7 @@ zmsg_t* PMServer::HandleSyncRequest(int paramId, zmsg_t **msg){
 
 
 zmsg_t* PMServer::HandleSyncResponse(int paramId, zmsg_t **msg){
-	zfarme_t *identity = zmsg_pop(*msg);
+	zframe_t *identity = zmsg_pop(*msg);
 
 	zframe_t *thread_id = zmsg_pop(*msg);
 
@@ -334,15 +332,15 @@ zmsg_t* PMServer::HandleSyncResponse(int paramId, zmsg_t **msg){
 	zmsg_t *param = this->param_shard()->update(paramId, msg);
 	if (param){
 		zmsg_destroy(&content);
-		zmsg_destroy(&identity);
-		zmsg_destroy(&thread_id);
+		zframe_destroy(&identity);
+		zframe_destroy(&thread_id);
 		return NULL;
 	}
 
 	zmsg_pushstrf(content, "%d", paramId);
 	zmsg_pushstrf(content, "%d", kSyncRequest);
-	zmsg_preprend(content, &thread_id);
-	zmsg_preprend(content, &identity);
+	zmsg_prepend(content, &thread_id);
+	zmsg_prepend(content, &identity);
 	zmsg_pushstr(content, REQUEUE_ID);
 	//the calling function will send this message off
 	return content;

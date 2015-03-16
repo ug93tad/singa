@@ -14,9 +14,9 @@ using google::protobuf::Message;
 
 namespace singa{
 
-#define REQUEUE_ID "REQUEUE"; /** id of the zmsg_t message that gets requeued */
-#define SYNC_MSG "SYNC";
-#define RESPONSE_HEADER "REP";
+#define REQUEUE_ID "REQUEUE" /** id of the zmsg_t message that gets requeued */
+#define SYNC_MSG "SYNC"
+#define RESPONSE_HEADER "REP"
 /**
  * Parameter manager at the server side: repsonding to client's get/udpate
  * request, and periodically syncing with other servers.

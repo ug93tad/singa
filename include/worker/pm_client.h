@@ -24,7 +24,7 @@ enum RequestReturnType{
  */
 class PMClient: public PMBase{
 public:
-	PMClient(int id, ParamShard *shard, void *socket):PMBase(id,shard,socket);
+	PMClient(int id, ParamShard *shard, void *socket):PMBase(id,shard,socket){}
 	~PMClient();
 
 	/**

@@ -10,7 +10,7 @@
 namespace singa{
 
 ParamShard::~ParamShard(){
-	for (map<int,Param*>::iterator it = params_.begin(); it!=parms_.end(); it++)
+	for (map<int,Param*>::iterator it = params_.begin(); it!=params_.end(); it++)
 		delete(it->second);
 }
 

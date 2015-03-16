@@ -13,6 +13,11 @@
 
 DECLARE_string(topology_config);
 DECLARE_int32(client_threads);
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
+using namespace google::protobuf::io;
+using google::protobuf::TextFormat;
+
 namespace singa{
 
 SingaClient::SingaClient(int id, int server_set_id) {
@@ -25,12 +30,12 @@ SingaClient::SingaClient(int id, int server_set_id) {
 	Topology topology;
 	TextFormat::Parse(new FileInputStream(fd), &topology);
 	int n_servers = topology.server_size();
-	map<int, ServerConfig*> all_servers;
+	map<int, char*> all_servers;
 
 	for (int i = 0; i < n_servers; i++) {
 		ServerConfig *server = topology.mutable_server(i);
 		char *neighbor_endpoint = (char*) malloc(256);
-		sprintf(neighbor_endpoint, "tcp://%s:%d", server->ip(),
+		sprintf(neighbor_endpoint, "tcp://%s:%d", server->ip().c_str(),
 				server->port());
 		all_servers[server->id()] = neighbor_endpoint;
 	}
@@ -73,7 +78,7 @@ void SingaClient::StartClient(){
 
 	//Star the message loop
 	bool is_running = true;
-	int nsockets= nserver+1;
+	int nsockets= nservers+1;
 	while (is_running) {
 		zmq_pollitem_t items[nsockets];
 		for (int i = 0; i < nsockets-1; i++)
@@ -84,7 +89,7 @@ void SingaClient::StartClient(){
 		if (rc<0) break;
 
 		for (int i=0; i<nsockets-1; i++){
-			if (items[i].revent & ZMQ_POLLIN){
+			if (items[i].revents & ZMQ_POLLIN){
 				zmsg_t *msg = zmsg_recv(server_sockets[i]);
 				if (!msg){
 					is_running = false;
@@ -94,7 +99,7 @@ void SingaClient::StartClient(){
 				zmsg_send(&msg, backend);
 			}
 		}
-		if (items[nsockets-1].revent & ZMQ_POLLIN){
+		if (items[nsockets-1].revents & ZMQ_POLLIN){
 			//compute serverId from paramId and forward to the socket
 			zmsg_t *msg = zmsg_recv(backend);
 			if (!msg) is_running=false;
@@ -103,13 +108,13 @@ void SingaClient::StartClient(){
 			int paramId;
 			sscanf(zmsg_popstr(msg), "%d", &paramId);
 			zmsg_pushstrf(msg,"%d",paramId);
-			zmsg_prepend(type);
-			zmsg_prepend(identity);
+			zmsg_prepend(msg,&type);
+			zmsg_prepend(msg,&identity);
 			zmsg_send(&msg, server_sockets[param_to_server_id(paramId)]);
 		}
 	}
 
-	zsoket_destroy(context, backend);
+	zsocket_destroy(context, backend);
 	for (int i=0; i<nsockets-1; i++)
 		zsocket_destroy(context, server_sockets[i]);
 	zctx_destroy(&context);
@@ -124,7 +129,7 @@ void ClientThread(void *args, zctx_t *ctx, void *pipe){
 	SingaClient *client = static_cast<SingaClient*>(args);
 
 	//Create back-end socket and connect to the main thread
-	void *backend = zsocket(ctx, ZMQ_DEALER);
+	void *backend = zsocket_new(ctx, ZMQ_DEALER);
 	int rc = zsocket_connect(backend, client->backend_endpoint());
 	assert(rc==0);
 
@@ -185,7 +190,7 @@ bool PMClient::Collect(Param* param){
 	int rc = zmq_poll(items,1,0);
 	if (rc<0) return false;
 
-	if (items[0].revent & ZMQ_POLLIN){
+	if (items[0].revents & ZMQ_POLLIN){
 		zmsg_t *msg = zmsg_recv(this->socket_);
 		param->ParseToParam(&msg);
 		return true;
