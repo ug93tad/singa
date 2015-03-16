@@ -47,6 +47,24 @@ zmsg_t* Param::HandleGetMsg(zmsg_t** msg){
   return ret;
 }
 
+zmsg_t* Param::HandleUpdateMsg(zmsg_t **msg){
+	//Wangwei: please help here
+	return NULL;
+}
+zmsg_t* Param::HandleSyncMsg(zmsg_t **msg){
+	//Wangwei: please help here
+	return NULL;
+}
+
+zmsg_t* Param::ParseToMsg(){
+	//Wangwei: please help here
+	return NULL;
+}
+
+void Param::ParseToParam(zmsg_t **msg){
+	//Wangwei: please help here
+	//Anh: to strip off the first 2 frames
+}
 
 void Param::Setup(const ParamProto& proto, const vector<int>& shape,
     int fan_in){

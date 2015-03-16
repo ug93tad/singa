@@ -29,7 +29,7 @@ class Param {
    virtual zmsg_t* ParseToMsg(); /** Parse Param's content to zmsg_t message */
 
    //msg of the format <kData><paramId><content>
-   virtual Param* ParseToParam(zmsg_t **msg);
+   virtual void ParseToParam(zmsg_t **msg);
 
    //End of Anh's stuff
 
