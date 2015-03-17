@@ -5,6 +5,7 @@ message ServerConfig{
 	required string ip = 2; 
 	required int32 port = 3; 
 	repeated int32 neighbor = 4; //upstream neighbors
+	required int32 sync_interval = 5; //how many update (per Param) before syncing
 }
 
 message ServerSet{
@@ -13,7 +14,6 @@ message ServerSet{
 }
 
 message Topology{
-	required int32 sync_interval = 6; //how many update (per Param) before syncing
 	repeated ServerConfig server = 5; //parameter server network	
 	repeated ServerSet primary_set = 7; 
 }

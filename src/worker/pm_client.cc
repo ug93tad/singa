@@ -10,6 +10,7 @@
 #include "worker/pm_client.h"
 #include "gflags/gflags.h"
 #include "proto/topology.pb.h"
+#include <glog/logging.h>
 
 DECLARE_string(topology_config);
 DECLARE_int32(client_threads);
@@ -72,9 +73,16 @@ void SingaClient::StartClient(){
 	rc = zsocket_bind(backend, backend_endpoint_);
 	assert(rc==0);
 
-	//Start clien threads
-	for (int i=0; i<FLAGS_client_threads; i++)
-		zthread_fork(context, ClientThread, this);
+	//Start client threads
+	for (int i=0; i<FLAGS_client_threads; i++){
+		void * socket = zthread_fork(context, ClientThread, this);
+		zmsg_t *control_msg = zmsg_new();
+		if (this->id()==0 && i==0)
+			zmsg_pushstr(control_msg,POPULATE);
+		else
+			zmsg_pushstr(control_msg, WAIT);
+		zmsg_send(&control_msg, socket);
+	}
 
 	//Star the message loop
 	bool is_running = true;
@@ -120,6 +128,21 @@ void SingaClient::StartClient(){
 	zctx_destroy(&context);
 }
 
+vector<Param*> gen_random_params() {
+	int size[] = { 2000, 5000000, 1000, 3000000, 500, 100000, 100, 1000, 10 };
+	vector<Param*> params;
+	for (int i = 0; i < 9; i++) {
+		ParamProto proto;
+		proto.set_id(i);
+		proto.set_init_method(ParamProto::kGaussain);
+		Param* p = new Param();
+		p->Setup(proto, vector<int> { size[i] }, 0);
+		p->Init();
+		params.push_back(p);
+	}
+	return params;
+}
+
 //simple mapping
 int SingaClient::param_to_server_id(int paramId){
 	return paramId % neighbors_.size();
@@ -132,14 +155,64 @@ void ClientThread(void *args, zctx_t *ctx, void *pipe){
 	void *backend = zsocket_new(ctx, ZMQ_DEALER);
 	int rc = zsocket_connect(backend, client->backend_endpoint());
 	assert(rc==0);
-
+	printf("Starting Client thread ...\n");
 	//Create PMClient object
 	PMClient *pmclient = new PMClient(client->id(), client->param_shard(), backend);
 
-	while (1){
-		//do job here, compute/get/update/compute/... sequence
+	//FOR TESTING ONLY. REMOVE THIS!
+	//wait for control from main thread
+	vector<Param*> params = gen_random_params();
+	zmsg_t *control_msg = zmsg_recv(pipe);
+	zframe_t *msg = zmsg_pop(control_msg);
+	if (zframe_streq(msg,WAIT))
+		zclock_sleep(2000); //2s
+	else{
+		for (int i=0; i<params.size(); i++){
+			pmclient->Put(i, params[i]);
+		}
+		LOG(INFO)<<"Done PUT requests for populating servers.";
+	}
+	zframe_destroy(&msg);
+	//END TESTING
+	printf("Done putting ...\n");
+
+	//first, get the params
+	test_get(pmclient);
+	printf("Done sending GET ..\n");
+	LOG(INFO) <<"Done 1st GET()";
+	test_collect(pmclient);
+	LOG(INFO) <<"Done 1st COLLECT()";
+	int iterations = 1;
+	while (iterations<=2){
+		test_update(pmclient, params);
+		LOG(INFO) << "Done " <<iterations << " UPDATE()";
+		test_collect(pmclient);
+		LOG(INFO) << "Done " <<iterations << " COLLECT()";
+		iterations++;
 	}
 	zsocket_destroy(ctx, backend);
+}
+
+void test_get(PMClient *client){
+	for (int i=0; i<9; i++){
+		Param pm;
+		printf("Getting param %d\n",i);
+		int status = client->Get(i, &pm);
+		assert(status==NON_LOCAL);
+	}
+}
+
+void test_collect(PMClient *client){
+	for (int i=0; i<9; i++){
+		Param pm;
+		while (!client->Collect(&pm))
+			zclock_sleep(1);
+	}
+}
+
+void test_update(PMClient *client, vector<Param*> params){
+	for (int i=0; i<params.size(); i++)
+		client->Update(i, params[i]);
 }
 
 void PMClient::Put(int paramId, Param *param){
@@ -160,6 +233,10 @@ int PMClient::Get(int paramId, Param *param){
 	else{
 		zmsg_t *msg = this->param_shard_->get(paramId, NULL);
 		if (msg){
+			zframe_t *tmp = zmsg_pop(msg);
+			zframe_destroy(&tmp);
+			tmp = zmsg_pop(msg);
+			zframe_destroy(&tmp);
 			param->ParseToParam(&msg);
 			return LOCAL_SUCCESS;
 		}
@@ -178,6 +255,10 @@ int PMClient::Update(int paramId, Param *param){
 	} else {
 		zmsg_t *msg = this->param_shard_->update(paramId, NULL);
 		if (msg) {
+			zframe_t *tmp = zmsg_pop(msg);
+			zframe_destroy(&tmp);
+			tmp = zmsg_pop(msg);
+			zframe_destroy(&tmp);
 			param->ParseToParam(&msg);
 			return LOCAL_SUCCESS;
 		} else
@@ -192,6 +273,10 @@ bool PMClient::Collect(Param* param){
 
 	if (items[0].revents & ZMQ_POLLIN){
 		zmsg_t *msg = zmsg_recv(this->socket_);
+		zframe_t *tmp = zmsg_pop(msg);
+		zframe_destroy(&tmp);
+		tmp = zmsg_pop(msg);
+		zframe_destroy(&tmp);
 		param->ParseToParam(&msg);
 		return true;
 	}

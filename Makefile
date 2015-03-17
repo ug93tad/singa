@@ -42,11 +42,15 @@ TEST_SRCS := src/test/test_mnistlayer.cc src/test/test_main.cc
 TEST_OBJS := $(sort $(addprefix $(BUILD_DIR)/, $(TEST_SRCS:.cc=.o)) $(SINGA_OBJS))
 -include $(TEST_OBJS:%.o=%.P)
 
+TEST_PM_SRCS := src/test/test_pm.cc 
+TEST_PM_OBJS := $(sort $(addprefix $(BUILD_DIR)/, $(TEST_PM_SRCS:.cc=.o)) $(SINGA_OBJS))
+-include $(TEST_PM_OBJS:%.o=%.P)
+
 TEST_Router_Src := src/test/dist_test/test_router.cc
 TEST_Router_Obj := $(sort $(addprefix $(BUILD_DIR)/, $(TEST_Router_Src:.cc=.o)) $(SINGA_OBJS))
 -include $(TEST_Router_Obj:%.o=%.P)
 
-OBJS := $(sort $(SINGA_OBJS) $(LOADER_OBJS) $(TEST_OBJS) $(TEST_Router_Obj))
+OBJS := $(sort $(SINGA_OBJS) $(LOADER_OBJS) $(TEST_OBJS) $(TEST_Router_Obj) $(TEST_PM_OBJS)) 
 
 ########################Compilation Section###################################
 .PHONY: all proto init loader singa
@@ -67,6 +71,10 @@ test: init proto $(TEST_OBJS)
 
 router: init proto $(TEST_Router_Obj)
 	$(CXX) $(TEST_Router_Obj) -o $(BUILD_DIR)/router $(CXXFLAGS) $(LDFLAGS)
+	@echo
+
+pm:	init proto $(TEST_PM_OBJS)
+	$(CXX) $(TEST_PM_OBJS) -o $(BUILD_DIR)/pm $(CXXFLAGS) $(LDFLAGS)
 	@echo
 
 # compile all files

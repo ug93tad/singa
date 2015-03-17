@@ -47,23 +47,28 @@ zmsg_t* Param::HandleGetMsg(zmsg_t** msg){
   return ret;
 }
 
+
+//for now, replace and return the new one
 zmsg_t* Param::HandleUpdateMsg(zmsg_t **msg){
-	//Wangwei: please help here
-	return NULL;
+	zmsg_t *dup = zmsg_dup(*msg);
+	this->HandlePutMsg(msg);
+	return dup;
 }
+
 zmsg_t* Param::HandleSyncMsg(zmsg_t **msg){
-	//Wangwei: please help here
-	return NULL;
+	return this->HandleUpdateMsg(msg);
 }
 
 zmsg_t* Param::ParseToMsg(){
-	//Wangwei: please help here
-	return NULL;
+	zmsg_t* msg=zmsg_new();
+    zmsg_addstrf(msg,"%s", name().c_str());
+    zmsg_addmem(msg, mutable_cpu_data(), sizeof(float)*data().count());
+
+	return msg;
 }
 
 void Param::ParseToParam(zmsg_t **msg){
-	//Wangwei: please help here
-	//Anh: to strip off the first 2 frames
+	this->HandlePutMsg(msg);
 }
 
 void Param::Setup(const ParamProto& proto, const vector<int>& shape,

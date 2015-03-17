@@ -1,5 +1,5 @@
-#ifndef PARAM_SERVER_H_
-#define PARAM_SERVER_H_
+#ifndef PARAM_CLIENT_H_
+#define PARAM_CLIENT_H_
 
 #include <czmq.h>
 #include <memory>
@@ -11,20 +11,24 @@
 using std::vector;
 using std::shared_ptr;
 
-namespace singa{
+namespace singa {
 
-enum RequestReturnType{
-	NON_LOCAL,
-	LOCAL_SUCCESS,
-	LOCAL_FAIL
+enum RequestReturnType {
+	NON_LOCAL, LOCAL_SUCCESS, LOCAL_FAIL
 };
+
+#define POPULATE "put"
+#define WAIT "wait"
+
 /**
  * Parameter manager at the worker side, support get/update requests from the worker.
  * Each worker thread has a PMClient object, these objects share the same ParamShard.
  */
-class PMClient: public PMBase{
+class PMClient: public PMBase {
 public:
-	PMClient(int id, ParamShard *shard, void *socket):PMBase(id,shard,socket){}
+	PMClient(int id, ParamShard *shard, void *socket) :
+			PMBase(id, shard, socket) {
+	}
 	~PMClient();
 
 	/**
@@ -53,8 +57,7 @@ public:
 };
 
 /**
- * Testing worker functionality.
- * The main thread reads the config file and set up the socket.
+ * Testing worker functionality.The main thread reads the config file and set up the socket.
  *
  * Create the shared ParamShard, then starts worker thread which basically carries out the work.
  * Each thread creates a PMClient object.
@@ -63,15 +66,25 @@ public:
  *
  * Requests from the worker thread is prepend the paramId, which is stripped by the main thread
  * before forwarding to the correct server.
+ *
+ * The 1st thread in Client 0 populates the servers with data (PUT request). Wait
+ * for a while before starting the client thread (which does get/update
+ * continuously).
  */
-class SingaClient{
+class SingaClient {
 public:
 	SingaClient(int id, int server_set_id);
 	void StartClient();
 
-	int id(){ return id_;}
-	ParamShard *param_shard(){ return param_shard_;}
-	char *backend_endpoint(){ return backend_endpoint_;}
+	int id() {
+		return id_;
+	}
+	ParamShard *param_shard() {
+		return param_shard_;
+	}
+	char *backend_endpoint() {
+		return backend_endpoint_;
+	}
 
 private:
 	int id_;
@@ -86,6 +99,10 @@ private:
 //Basically a loop of: compute, get, update, compute, etc.
 void ClientThread(void *args, zctx_t *ctx, void *pipe);
 
-} // namespace singa
+vector<Param*> gen_random_params();
+void test_get(PMClient *client);
+void test_update(PMClient *client, vector<Param*> params);
+void test_collect(PMClient *client);
 
+} // namespace singa
 #endif /* PARAM_SERVER_H_ */

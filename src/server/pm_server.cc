@@ -30,18 +30,20 @@ SingaServer::SingaServer(int id){
 
 	//Read Topology message from the file
 	int fd = open(FLAGS_topology_config.c_str(),O_RDONLY);
-	assert(fd);
+	assert(fd!=-1);
 	Topology topology;
 	TextFormat::Parse(new FileInputStream(fd), &topology);
 	int n_servers = topology.server_size();
 	map<int, char*> other_servers;
 
 
+	int sync_interval = 0;
 	for (int i=0; i<n_servers; i++){
 		ServerConfig *server = topology.mutable_server(i);
 		if (server->id()==id_){
 			sprintf(frontend_endpoint_,"tcp://%s:%d",server->ip().c_str(),server->port());
 			sprintf(backend_endpoint_,"inproc://singanus:%d",id_);
+			sync_interval = server->sync_interval();
 		}
 		else {
 			char *neighbor_endpoint = (char*)malloc(256);
@@ -59,7 +61,7 @@ SingaServer::SingaServer(int id){
 		}
 	}
 
-	param_shard_ = new ParamShard(id_, topology.sync_interval());
+	param_shard_ = new ParamShard(id_, sync_interval);
 
 }
 
@@ -68,6 +70,7 @@ void SingaServer::StartServer() {
 	zctx_t *context = zctx_new();
 	void *frontend = zsocket_new(context, ZMQ_ROUTER);
 	void *backend = zsocket_new(context, ZMQ_DEALER);
+	printf("binding to front end %s --- backend %s \n", frontend_endpoint_, backend_endpoint_);
 	int rc = zsocket_bind(frontend, frontend_endpoint_);
 	assert(rc);
 	rc = zsocket_bind(backend, backend_endpoint_);
