@@ -27,7 +27,8 @@ DEFINE_int32(server_threads,1,"Number of server's worker threads per process");
 DEFINE_int32(client_threads,1,"Number of client's worker threads per process");
 
 DEFINE_string(mode, "client", "client or server mode");
-DEFINE_int32(node_id, 0, "ID of the node, client or server");
+DEFINE_int32(server_id, 0, "ID of the node, client or server");
+DEFINE_int32(worker_id,0, "Global ID of the worker");
 DEFINE_int32(primary_set, 0, "ID of the primary server set (for client mode only)");
 
 /**
@@ -44,11 +45,11 @@ int main(int argc, char **argv) {
 
   FLAGS_logtostderr = 1; 
   if (strcmp(FLAGS_mode.c_str(),"client")==0){
-	  singa::SingaClient *client = new singa::SingaClient(FLAGS_node_id, FLAGS_primary_set);
+	  singa::SingaClient *client = new singa::SingaClient(FLAGS_worker_id);
 	  client->StartClient();
   }
   else{
-	  singa::SingaServer *server = new singa::SingaServer(FLAGS_node_id);
+	  singa::SingaServer *server = new singa::SingaServer(FLAGS_server_id);
 	  server->StartServer();
   }
   return 0;

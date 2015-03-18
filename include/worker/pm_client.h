@@ -73,7 +73,7 @@ public:
  */
 class SingaClient {
 public:
-	SingaClient(int id, int server_set_id);
+	SingaClient(int worker_id);
 	void StartClient();
 
 	int id() {
@@ -87,7 +87,7 @@ public:
 	}
 
 private:
-	int id_;
+	int id_, local_id_, group_id_;
 	char backend_endpoint_[256];
 	vector<char*> neighbors_;
 	ParamShard *param_shard_;

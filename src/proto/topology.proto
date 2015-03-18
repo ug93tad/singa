@@ -13,7 +13,13 @@ message ServerSet{
 	repeated int32 neighbor = 2; //set of primary server
 }
 
+message WorkerConfig{
+	required int32 global_id = 1; //node id
+	required int32 local_id = 2; //id in the group
+	required int32 group_id = 3; //ServerSet ID
+}
 message Topology{
-	repeated ServerConfig server = 5; //parameter server network	
-	repeated ServerSet primary_set = 7; 
+	repeated ServerConfig server = 5; //parameter server network
+	repeated WorkerConfig worker = 6; 	
+	repeated ServerSet server_group = 7; 
 }

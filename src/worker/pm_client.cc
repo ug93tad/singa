@@ -21,15 +21,26 @@ using google::protobuf::TextFormat;
 
 namespace singa{
 
-SingaClient::SingaClient(int id, int server_set_id) {
+//id is the global worker id
+SingaClient::SingaClient(int global_id) {
 	//Read the config files and store endpoints
-	id_ = id;
+	id_ = global_id;
 
 	//Read Topology message from the file
 	int fd = open(FLAGS_topology_config.c_str(), O_RDONLY);
 	assert(fd);
 	Topology topology;
 	TextFormat::Parse(new FileInputStream(fd), &topology);
+
+	for (int i=0; i<topology.worker_size(); i++){
+		WorkerConfig *worker = topology.mutable_worker(i);
+		if (worker->global_id()==id_){
+			local_id_ = worker->local_id();
+			group_id_ = worker->group_id();
+			break;
+		}
+	}
+
 	int n_servers = topology.server_size();
 	map<int, char*> all_servers;
 
@@ -43,7 +54,7 @@ SingaClient::SingaClient(int id, int server_set_id) {
 
 	for (int i=0; i< topology.primary_set_size(); i++){
 		ServerSet *server_set = topology.mutable_primary_set(i);
-		if (server_set->id()==server_set_id){
+		if (server_set->id()==group_id_){
 			for (int j=0; j<server_set->neighbor_size(); j++)
 				neighbors_.push_back(all_servers[server_set->neighbor(j)]);
 			break;
@@ -77,7 +88,7 @@ void SingaClient::StartClient(){
 	for (int i=0; i<FLAGS_client_threads; i++){
 		void * socket = zthread_fork(context, ClientThread, this);
 		zmsg_t *control_msg = zmsg_new();
-		if (i==0 && id_==0)
+		if (i==0 && local_id_==0)
 			zmsg_pushstr(control_msg,POPULATE);
 		else
 			zmsg_pushstr(control_msg, WAIT);
