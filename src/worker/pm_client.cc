@@ -77,7 +77,7 @@ void SingaClient::StartClient(){
 	for (int i=0; i<FLAGS_client_threads; i++){
 		void * socket = zthread_fork(context, ClientThread, this);
 		zmsg_t *control_msg = zmsg_new();
-		if (i==0)
+		if (i==0 && id_==0)
 			zmsg_pushstr(control_msg,POPULATE);
 		else
 			zmsg_pushstr(control_msg, WAIT);
