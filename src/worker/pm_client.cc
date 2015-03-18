@@ -49,7 +49,7 @@ SingaClient::SingaClient(int id, int server_set_id) {
 			break;
 		}
 	}
-	sprintf(backend_endpoint_, "inproc://singanus:%d",id_);
+	sprintf(backend_endpoint_, "inproc://singanus%d",id_);
 
 	//Create shared paramshard
 	param_shard_ = new ParamShard(id_,0);
@@ -77,7 +77,7 @@ void SingaClient::StartClient(){
 	for (int i=0; i<FLAGS_client_threads; i++){
 		void * socket = zthread_fork(context, ClientThread, this);
 		zmsg_t *control_msg = zmsg_new();
-		if (this->id()==0 && i==0)
+		if (i==0)
 			zmsg_pushstr(control_msg,POPULATE);
 		else
 			zmsg_pushstr(control_msg, WAIT);
@@ -170,33 +170,36 @@ void ClientThread(void *args, zctx_t *ctx, void *pipe){
 		for (int i=0; i<params.size(); i++){
 			pmclient->Put(i, params[i]);
 		}
-		LOG(INFO)<<"Done PUT requests for populating servers.";
+		VLOG(3)<<"Done PUT requests for populating servers.";
+		zclock_sleep(2000); 
 	}
 	zframe_destroy(&msg);
 	//END TESTING
-	printf("Done putting ...\n");
+	LOG(ERROR) << "Done putting";
 
 	//first, get the params
+
 	test_get(pmclient);
-	printf("Done sending GET ..\n");
-	LOG(INFO) <<"Done 1st GET()";
+	VLOG(3) <<"Done 1st GET()";
 	test_collect(pmclient);
-	LOG(INFO) <<"Done 1st COLLECT()";
+	VLOG(3) <<"Done 1st COLLECT()";
+
+
 	int iterations = 1;
-	while (iterations<=2){
+	while (iterations<=10){
 		test_update(pmclient, params);
-		LOG(INFO) << "Done " <<iterations << " UPDATE()";
+		VLOG(3) << "Done " <<iterations << " UPDATE()";
 		test_collect(pmclient);
-		LOG(INFO) << "Done " <<iterations << " COLLECT()";
+		VLOG(3) << "Done " <<iterations << " COLLECT()";
 		iterations++;
 	}
+
 	zsocket_destroy(ctx, backend);
 }
 
 void test_get(PMClient *client){
 	for (int i=0; i<9; i++){
 		Param pm;
-		printf("Getting param %d\n",i);
 		int status = client->Get(i, &pm);
 		assert(status==NON_LOCAL);
 	}

@@ -162,6 +162,8 @@ class Param {
 
   ParamProto proto_;
   int fan_in_;
+
+  zmutex_t *param_lock_;
 };
 
 /**

@@ -9,6 +9,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <gflags/gflags.h>
+#include <glog/logging.h>
 #include <string.h>
 #include <czmq.h>
 #include <stdlib.h>
@@ -42,7 +43,7 @@ SingaServer::SingaServer(int id){
 		ServerConfig *server = topology.mutable_server(i);
 		if (server->id()==id_){
 			sprintf(frontend_endpoint_,"tcp://%s:%d",server->ip().c_str(),server->port());
-			sprintf(backend_endpoint_,"inproc://singanus:%d",id_);
+			sprintf(backend_endpoint_,"inproc://singanus%d",id_);
 			sync_interval = server->sync_interval();
 		}
 		else {
@@ -80,6 +81,7 @@ void SingaServer::StartServer() {
 	for (int i=0; i<neighbors_.size(); i++) {
 		void *socket = zsocket_new(context, ZMQ_DEALER);
 		zsocket_connect(socket, neighbors_[i]);
+		VLOG(3)<<"Coneccted to neighbor = "<<neighbors_[i];
 		neighbor_socket.push_back(socket);
 	}
 
@@ -105,7 +107,9 @@ void SingaServer::StartServer() {
 			zmsg_t *msg = zmsg_recv(frontend);
 			if (!msg)
 				break;
+
 			//send to backend
+
 			zmsg_send(&msg, backend);
 		}
 		if (items[1].revents & ZMQ_POLLIN) {
@@ -124,7 +128,7 @@ void SingaServer::StartServer() {
 					zframe_destroy(&type);
 					zmsg_pushstrf(dup,"%d",kSyncRequest);
 					zmsg_prepend(dup,&tid);
-					zmsg_prepend(dup,&id);
+					zframe_destroy(&id);
 					zmsg_send(&dup,neighbor_socket[i]);
 				}
 			}
@@ -171,7 +175,6 @@ void ServerThread(void *args, zctx_t *ctx, void *pipe){
 	while (true){
 		zmsg_t *msg = zmsg_recv(backend);
 		if (!msg) break;
-
 		//process the request
 		//1. pop the identity frame
 		//2. pop the next string:
@@ -180,24 +183,22 @@ void ServerThread(void *args, zctx_t *ctx, void *pipe){
 		//3. invoke PMServer to process it. Send back to the frontend socket if fail.
 		//   send back to the worker if successful.
 		zframe_t *identity = zmsg_pop(msg);
-		zframe_t *thread_id;
-		char *next_frame = zmsg_popstr(msg);
-		if (memcmp(next_frame, REQUEUE_ID, strlen(REQUEUE_ID))==0){
+		zframe_t *thread_id = zmsg_pop(msg);
+		if (memcmp(zframe_data(thread_id), REQUEUE_ID, strlen(REQUEUE_ID))==0){
 			//requeued msg, pop another frame
 			zframe_destroy(&identity);
-			free(next_frame);
+			zframe_destroy(&thread_id); 
 			identity = zmsg_pop(msg); //identity is the next frame
 			thread_id = zmsg_pop(msg);
-			next_frame = zmsg_popstr(msg);
-			sscanf(next_frame, "%d",&type);
 		}
-		else{
-			thread_id = zmsg_pop(msg);
-			sscanf(next_frame,"%d",&type);
-		}
-		free(next_frame);
+		char *typestr = zmsg_popstr(msg);
+		sscanf(typestr, "%d",&type);
+		free(typestr); 
+		
+		char *param_frame = zmsg_popstr(msg); 
+		sscanf(param_frame,"%d",&paramId);
+		free(param_frame); 		
 
-		sscanf(zmsg_popstr(msg),"%d",&paramId);
 		zmsg_prepend(msg, &thread_id);
 		zmsg_prepend(msg,&identity); //construct (<identity><worker thread id><content>) message
 
@@ -306,7 +307,13 @@ zmsg_t* PMServer::HandleSyncRequest(int paramId, zmsg_t **msg){
 		zmsg_pushstrf(param, "%d", paramId);
 		zmsg_pushstrf(param, "%d", kSyncResponse);
 		zmsg_prepend(param, &thread_id);
+
+		//push 2 identity frame, one stripped by the local router, another
+		//by the DEALER at the other side
+		zframe_t *id_dup = zframe_dup(identity);
 		zmsg_prepend(param, &identity);
+		zmsg_prepend(param,&id_dup);
+
 		zmsg_pushstr(param, RESPONSE_HEADER);
 
 		//send off

@@ -10,6 +10,7 @@
 #include "worker/worker.h"
 #include <string.h>
 
+
 /**
  * Testing put/get/update performance of the new zeromq-based parameter
  * servers.
@@ -41,6 +42,7 @@ int main(int argc, char **argv) {
   google::InitGoogleLogging(argv[0]);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
 
+  FLAGS_logtostderr = 1; 
   if (strcmp(FLAGS_mode.c_str(),"client")==0){
 	  singa::SingaClient *client = new singa::SingaClient(FLAGS_node_id, FLAGS_primary_set);
 	  client->StartClient();

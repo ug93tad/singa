@@ -16,15 +16,18 @@ int64_t Param::worker_handle_sync=0;
 Param::Param(){
   owner_=this;
   fan_in_=0;
+  param_lock_ = zmutex_new();
 }
 
 Param::~Param(){}
 
 zmsg_t* Param::HandlePutMsg(zmsg_t** msg){
+	/*
   char* name=zmsg_popstr(*msg);
   CHECK(name);
   name_=string(name);
   delete name;
+  */
 
   zframe_t* dataframe=zmsg_pop(*msg);
   data_.Reshape(vector<int>{(int)(zframe_size(dataframe)/sizeof(float))});
@@ -36,14 +39,16 @@ zmsg_t* Param::HandlePutMsg(zmsg_t** msg){
 }
 
 zmsg_t* Param::HandleGetMsg(zmsg_t** msg){
+	/*
   char* name=zmsg_popstr(*msg);
   zmsg_destroy(msg);
   CHECK_STREQ(name_.c_str(), name);
+	*/
 
   zmsg_t* ret=zmsg_new();
-  zmsg_addstr(ret, name);
+  //zmsg_addstr(ret, name);
   zmsg_addmem(ret, data_.mutable_cpu_data(), data_.count()*sizeof(float));
-  delete name;
+  //delete name;
   return ret;
 }
 
@@ -61,7 +66,7 @@ zmsg_t* Param::HandleSyncMsg(zmsg_t **msg){
 
 zmsg_t* Param::ParseToMsg(){
 	zmsg_t* msg=zmsg_new();
-    zmsg_addstrf(msg,"%s", name().c_str());
+    //zmsg_addstrf(msg,"%s", name().c_str());
     zmsg_addmem(msg, mutable_cpu_data(), sizeof(float)*data().count());
 
 	return msg;

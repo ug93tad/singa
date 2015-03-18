@@ -15,15 +15,21 @@ ParamShard::~ParamShard(){
 }
 
 zmsg_t* ParamShard::get(int paramId, zmsg_t **msg){
+	map<int,Param*>::iterator it = params_.find(paramId);
+	assert(it!=params_.end());
+
 	Param* ret =  params_[paramId];
 	return ret->HandleGetMsg(msg);
 }
 
 zmsg_t* ParamShard::update(int paramId, zmsg_t **msg){
+	map<int,Param*>::iterator it = params_.find(paramId);
+	assert(it!=params_.end());
 	Param *old = params_[paramId];
 	zmsg_t *response =  old->HandleUpdateMsg(msg);
 	if (response)
 		update_counters_[paramId]++;
+	return response;
 }
 
 //same as update for now
@@ -32,6 +38,9 @@ zmsg_t* ParamShard::sync_update(int paramId, zmsg_t **msg){
 }
 
 zmsg_t* ParamShard::put(int paramId, zmsg_t **msg){
+	//map<int,Param*>::iterator it = params_.find(paramId);
+	//assert(it==params_.end());
+
 	Param *param = new Param();
 	param->HandlePutMsg(msg);
 
@@ -49,8 +58,9 @@ bool ParamShard::sync_now(int paramId){
 }
 
 bool ParamShard::is_local(int paramId){
-	map<int, Param*>::iterator it = this->params_.find(paramId);
-	return it==this->params_.end();
+	map<int, Param*>::iterator it = params_.find(paramId);
+	return it!=params_.end();
+//	return false; 
 }
 } // namespace singa
 
