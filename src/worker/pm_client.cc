@@ -37,6 +37,7 @@ SingaClient::SingaClient(int global_id) {
 		if (worker->global_id()==id_){
 			local_id_ = worker->local_id();
 			group_id_ = worker->group_id();
+			FLAGS_client_threads = worker->threads(); 
 			break;
 		}
 	}
@@ -52,8 +53,8 @@ SingaClient::SingaClient(int global_id) {
 		all_servers[server->id()] = neighbor_endpoint;
 	}
 
-	for (int i=0; i< topology.primary_set_size(); i++){
-		ServerSet *server_set = topology.mutable_primary_set(i);
+	for (int i=0; i< topology.server_group_size(); i++){
+		ServerSet *server_set = topology.mutable_server_group(i);
 		if (server_set->id()==group_id_){
 			for (int j=0; j<server_set->neighbor_size(); j++)
 				neighbors_.push_back(all_servers[server_set->neighbor(j)]);
@@ -75,6 +76,7 @@ void SingaClient::StartClient(){
 	for (int i=0; i<nservers; i++){
 		void *socket = zsocket_new(context, ZMQ_DEALER);
 		rc = zsocket_connect(socket, neighbors_[i]);
+		VLOG(3) << "Connected to neighbor " <<neighbors_[i];
 		assert(rc==0);
 		server_sockets.push_back(socket);
 	}
@@ -140,9 +142,9 @@ void SingaClient::StartClient(){
 }
 
 vector<Param*> gen_random_params() {
-	int size[] = { 2000, 5000000, 1000, 3000000, 500, 100000, 100, 1000, 10 };
+	int size[] = { 1960000, 2500, 5000000, 2000, 3000000, 1500, 1500000, 1000, 500000, 500, 5000, 10 };
 	vector<Param*> params;
-	for (int i = 0; i < 9; i++) {
+	for (int i = 0; i < 12; i++) {
 		ParamProto proto;
 		proto.set_id(i);
 		proto.set_init_method(ParamProto::kGaussain);
@@ -191,17 +193,14 @@ void ClientThread(void *args, zctx_t *ctx, void *pipe){
 	//first, get the params
 
 	test_get(pmclient);
-	VLOG(3) <<"Done 1st GET()";
 	test_collect(pmclient);
-	VLOG(3) <<"Done 1st COLLECT()";
 
 
 	int iterations = 1;
-	while (iterations<=10){
+	while (iterations<=200){
+		VLOG(3) << "Iteration "<<iterations; 
 		test_update(pmclient, params);
-		VLOG(3) << "Done " <<iterations << " UPDATE()";
 		test_collect(pmclient);
-		VLOG(3) << "Done " <<iterations << " COLLECT()";
 		iterations++;
 	}
 
@@ -209,7 +208,7 @@ void ClientThread(void *args, zctx_t *ctx, void *pipe){
 }
 
 void test_get(PMClient *client){
-	for (int i=0; i<9; i++){
+	for (int i=0; i<12; i++){
 		Param pm;
 		int status = client->Get(i, &pm);
 		assert(status==NON_LOCAL);
@@ -217,10 +216,13 @@ void test_get(PMClient *client){
 }
 
 void test_collect(PMClient *client){
-	for (int i=0; i<9; i++){
+	for (int i=0; i<12; i++){
 		Param pm;
+		int64_t start_time = zclock_time(); 
 		while (!client->Collect(&pm))
 			zclock_sleep(1);
+		int64_t end_time = zclock_time(); 
+		VLOG(3) << "Collected: " <<(end_time-start_time); 
 	}
 }
 

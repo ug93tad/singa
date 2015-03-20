@@ -34,7 +34,7 @@ SingaServer::SingaServer(int id){
 	assert(fd!=-1);
 	Topology topology;
 	TextFormat::Parse(new FileInputStream(fd), &topology);
-	int n_servers = topology.server_size();
+	int n_servers = topology.server_size();	
 	map<int, char*> other_servers;
 
 
@@ -45,6 +45,7 @@ SingaServer::SingaServer(int id){
 			sprintf(frontend_endpoint_,"tcp://%s:%d",server->ip().c_str(),server->port());
 			sprintf(backend_endpoint_,"inproc://singanus%d",id_);
 			sync_interval = server->sync_interval();
+			FLAGS_server_threads = server->threads(); 
 		}
 		else {
 			char *neighbor_endpoint = (char*)malloc(256);
@@ -120,6 +121,7 @@ void SingaServer::StartServer() {
 			//also forward to the frontend.
 			zframe_t *first = zmsg_pop(msg);
 			if (zframe_streq(first, SYNC_MSG)) {
+				VLOG(3)<<"Sync with other " << (nsockets-2) << " servers"; 
 				for (int i=0; i<nsockets-2; i++){
 					zmsg_t *dup = zmsg_dup(msg);
 					zframe_t *id = zmsg_pop(dup);
@@ -214,9 +216,11 @@ void ServerThread(void *args, zctx_t *ctx, void *pipe){
 				data = pmserver->HandleUpdate(paramId, &msg);
 				break;
 			case kSyncRequest:
+				VLOG(3)<<"Handle SYNC-REQUEST"; 
 				data = pmserver->HandleSyncRequest(paramId, &msg);
 				break;
 			case kSyncResponse:
+				VLOG(3) << "Handle SYNC response";  
 				data = pmserver->HandleSyncResponse(paramId,&msg);
 				break;
 		}
@@ -344,6 +348,7 @@ zmsg_t* PMServer::HandleSyncResponse(int paramId, zmsg_t **msg){
 		zmsg_destroy(&content);
 		zframe_destroy(&identity);
 		zframe_destroy(&thread_id);
+		zmsg_destroy(&param); 
 		return NULL;
 	}
 

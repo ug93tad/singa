@@ -1,7 +1,6 @@
 ###################User Config Varaibles #############################
 # third-party library installation folder
-HOME_DIR := /usr
-#/home/wangwei/install
+HOME_DIR := /home/wangwei/install
 # Lib folder for system and external libs. You may need to change it.
 LIBRARY_DIRS := $(HOME_DIR)/lib64 $(HOME_DIR)/lib $(HOME_DIR)/local/lib
 # Header folder for system and external libs. You may need to change it.
@@ -10,7 +9,7 @@ INCLUDE_DIRS := $(HOME_DIR)/include ./include
 CXX := g++
 
 ######################Setting Varialbes#######################################
-LIBRARIES := glog gflags protobuf rt opencv_highgui opencv_imgproc opencv_core zmq czmq lmdb blas
+LIBRARIES := glog gflags protobuf rt opencv_highgui opencv_imgproc opencv_core zmq czmq lmdb openblas
 
 LDFLAGS := $(foreach librarydir, $(LIBRARY_DIRS), -L$(librarydir)) $(foreach library, $(LIBRARIES), -l$(library))
 # Folder to store compiled files
