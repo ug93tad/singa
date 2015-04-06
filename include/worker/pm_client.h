@@ -13,6 +13,7 @@ using std::shared_ptr;
 
 namespace singa {
 
+
 enum RequestReturnType {
 	NON_LOCAL, LOCAL_SUCCESS, LOCAL_FAIL
 };

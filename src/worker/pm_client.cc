@@ -52,8 +52,8 @@ SingaClient::SingaClient(int global_id) {
 		all_servers[server->id()] = neighbor_endpoint;
 	}
 
-	for (int i=0; i< topology.primary_set_size(); i++){
-		ServerSet *server_set = topology.mutable_primary_set(i);
+	for (int i=0; i< topology.server_group_size(); i++){
+		ServerSet *server_set = topology.mutable_server_group(i);
 		if (server_set->id()==group_id_){
 			for (int j=0; j<server_set->neighbor_size(); j++)
 				neighbors_.push_back(all_servers[server_set->neighbor(j)]);

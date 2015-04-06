@@ -52,24 +52,25 @@ TEST_Router_Obj := $(sort $(addprefix $(BUILD_DIR)/, $(TEST_Router_Src:.cc=.o)) 
 
 OBJS := $(sort $(SINGA_OBJS) $(LOADER_OBJS) $(TEST_OBJS) $(TEST_Router_Obj) $(TEST_PM_OBJS)) 
 
+SINGA_EXE = $(BUILD_DIR)/singa
 ########################Compilation Section###################################
-.PHONY: all proto init loader singa
+.PHONY: all singa
 
-all: singa loader
+singa: $(SINGA_EXE)
 
-singa: init proto  $(SINGA_OBJS)
+$(SINGA_EXE): $(PROTO_OBJS) $(SINGA_OBJS)
 	$(CXX) $(SINGA_OBJS) src/main.cc -o $(BUILD_DIR)/singa $(CXXFLAGS) $(LDFLAGS)
 	@echo
 
-loader: init proto $(LOADER_OBJS)
+loader: proto $(LOADER_OBJS)
 	$(CXX) $(LOADER_OBJS) -o $(BUILD_DIR)/loader $(CXXFLAGS) $(LDFLAGS)
 	@echo
 
-test: init proto $(TEST_OBJS)
+test:  proto $(TEST_OBJS)
 	$(CXX) $(TEST_OBJS) -o $(BUILD_DIR)/test $(CXXFLAGS) $(LDFLAGS)
 	@echo
 
-router: init proto $(TEST_Router_Obj)
+router: proto $(TEST_Router_Obj)
 	$(CXX) $(TEST_Router_Obj) -o $(BUILD_DIR)/router $(CXXFLAGS) $(LDFLAGS)
 	@echo
 
@@ -79,20 +80,16 @@ pm:	init proto $(TEST_PM_OBJS)
 
 # compile all files
 $(OBJS):$(BUILD_DIR)/%.o : %.cc
+	@mkdir -p $(dir $@)
 	$(CXX) $<  $(CXXFLAGS) -MMD -c -o $@
 	cp $(BUILD_DIR)/$*.d $(BUILD_DIR)/$*.P; \
 	sed -e 's/#.*//' -e 's/^[^:]*: *//' -e 's/ *\\$$//' \
 		-e '/^$$/ d' -e 's/$$/ :/' < $(BUILD_DIR)/$*.d >> $(BUILD_DIR)/$*.P; \
 	rm -f $*.d
 
-# create folders
-init:
-	@ mkdir -p $(foreach obj, $(OBJS), $(dir $(obj)))
-	@echo
+proto: $(PROTO_OBJS)
 
-proto: init $(PROTO_OBJS)
-
-$(PROTO_HDRS) $(PROTO_SRCS): $(PROTOS)
+$(PROTO_SRCS): $(PROTOS)
 	protoc --proto_path=src/proto --cpp_out=src/proto $(PROTOS)
 	mkdir -p include/proto/
 	cp src/proto/*.pb.h include/proto/
