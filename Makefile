@@ -9,7 +9,7 @@ INCLUDE_DIRS := $(HOME_DIR)/include ./include
 CXX := g++
 
 ######################Setting Varialbes#######################################
-LIBRARIES := glog gflags protobuf rt opencv_highgui opencv_imgproc opencv_core zmq czmq lmdb openblas
+LIBRARIES := glog gflags protobuf rt opencv_highgui opencv_imgproc opencv_core zmq czmq lmdb blas
 
 LDFLAGS := $(foreach librarydir, $(LIBRARY_DIRS), -L$(librarydir)) $(foreach library, $(LIBRARIES), -l$(library))
 # Folder to store compiled files
@@ -73,7 +73,7 @@ router: proto $(TEST_Router_Obj)
 	$(CXX) $(TEST_Router_Obj) -o $(BUILD_DIR)/router $(CXXFLAGS) $(LDFLAGS)
 	@echo
 
-pm:	init proto $(TEST_PM_OBJS)
+pm:	proto $(TEST_PM_OBJS)
 	$(CXX) $(TEST_PM_OBJS) -o $(BUILD_DIR)/pm $(CXXFLAGS) $(LDFLAGS)
 	@echo
 

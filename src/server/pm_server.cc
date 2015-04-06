@@ -12,40 +12,43 @@
 #include <stdlib.h>
 #include "server/pm_server.h"
 #include "proto/topology.pb.h"
+#include <vector>
+
+using std::vector;
 
 DECLARE_string(topology_config);
 DECLARE_int32(server_threads);
 
 namespace singa{
 
-SingaServer::SingaServer(int id, Topology &topology){
+SingaServer::SingaServer(int id, Topology &topology, vector<string> &hosts){
 	id_ = id;
 
-	int n_servers = topology.server_size();	
+	int n_servers = topology.nservers();
+	int n_server_groups = topology.server_group_size();
+	int port = topology.port();
+	int group_size = n_servers/n_server_groups;
+	FLAGS_server_threads = topology.server_threads();
+
 	map<int, char*> other_servers;
 
+	VLOG(3) << "Parsing config file for host "<<hosts[id_];
+	sprintf(frontend_endpoint_, "tcp://%s:%d", hosts[id_].c_str(), port);
+	sprintf(backend_endpoint_, "inproc://singanus%d", id_);
 
-	int sync_interval = 0;
-	for (int i=0; i<n_servers; i++){
-		ServerConfig *server = topology.mutable_server(i);
-		if (server->id()==id_){
-			sprintf(frontend_endpoint_,"tcp://%s:%d",server->ip().c_str(),server->port());
-			sprintf(backend_endpoint_,"inproc://singanus%d",id_);
-			sync_interval = server->sync_interval();
-			FLAGS_server_threads = server->threads(); 
-		}
-		else {
-			char *neighbor_endpoint = (char*)malloc(256);
-			sprintf(neighbor_endpoint,"tcp://%s:%d",server->ip().c_str(),server->port());
-			other_servers[server->id()] = neighbor_endpoint;
-		}
-	}
+	int local_id_ = id_%group_size; //will connect to the same local id of its neighbor group
+	int neighbor_group_id = 0;
+	int sync_interval=0;
+	for (int i=0; i<n_server_groups; i++){
+		ServerGroup *group = topology.mutable_server_group(i);
+		if (group->id()==(id_/group_size)){//the group where this server belongs
+			sync_interval = group->sync_interval();
+			neighbor_group_id = group->neighbor(0);//assume only one neighbor
 
-	for (int i=0; i<n_servers; i++){
-		ServerConfig *server = topology.mutable_server(i);
-		if (server->id()==id_){
-			for (int j=0; j<server->neighbor_size(); j++)
-				neighbors_.push_back(other_servers[server->neighbor(j)]);
+			char *neighbor_endpoint = (char*) malloc(256);
+			sprintf(neighbor_endpoint, "tcp://%s:%d",
+					hosts[neighbor_group_id * group_size + local_id_].c_str(), port);
+			VLOG(3) << "Neighboring server is " << neighbor_endpoint;
 			break;
 		}
 	}

@@ -2,6 +2,9 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 
+#include <iostream>
+#include <fstream>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include "utils/cluster.h"
@@ -12,12 +15,15 @@
 #include "server/pm_server.h"
 #include "worker/pm_client.h"
 #include "worker/worker.h"
+#include "proto/topology.pb.h"
 #include <string.h>
 #include <google/protobuf/text_format.h>
 #include <google/protobuf/io/zero_copy_stream_impl.h>
 
 using namespace google::protobuf::io;
 using google::protobuf::TextFormat;
+
+using std::ifstream;
 
 /**
  * Testing put/get/update performance of the new zeromq-based parameter
@@ -58,14 +64,21 @@ int main(int argc, char **argv) {
 	//Read in the topology file
 	int fd = open(FLAGS_topology_config.c_str(), O_RDONLY);
 	assert(fd != -1);
-	Topology topology;
+	singa::Topology topology;
 	TextFormat::Parse(new FileInputStream(fd), &topology);
 
-	if (FLAGS_node_id < topology.nserver()) {
-		singa::SingaServer *server = new singa::SingaServer(FLAGS_node_id, topology);
+	//read host file
+	ifstream hostfile(topology.hostfile().c_str());
+	string host;
+	vector<string> hosts;
+	while (getline(hostfile, host))
+		hosts.push_back(host);
+
+	if (FLAGS_node_id < topology.nservers()) {
+		singa::SingaServer *server = new singa::SingaServer(FLAGS_node_id, topology, hosts);
 		server->StartServer();
 	} else {
-		singa::SingaClient *client = new singa::SingaClient(FLAGS_node_id, topology);
+		singa::SingaClient *client = new singa::SingaClient(FLAGS_node_id, topology, hosts);
 		client->StartClient();
 	}
 	return 0;

@@ -5,10 +5,12 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <string.h>
 #include "utils/param_shard.h"
 #include "utils/pm_base.h"
 #include "proto/topology.pb.h"
 
+using std::string;
 using std::vector;
 using std::shared_ptr;
 
@@ -75,7 +77,7 @@ public:
  */
 class SingaClient {
 public:
-	SingaClient(int worker_id, Topology &topology);
+	SingaClient(int worker_id, Topology &topology, vector<string> &hosts);
 	void StartClient();
 
 	int id() {

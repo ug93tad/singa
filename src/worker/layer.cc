@@ -300,7 +300,7 @@ void LMDBDataLayer::Setup(const LayerProto& proto,
   CHECK_EQ(mdb_env_set_mapsize(mdb_env_, 1099511627776), MDB_SUCCESS); // 1TB
   CHECK_EQ(mdb_env_open(mdb_env_,
         proto.data_param().path().c_str(),
-        MDB_RDONLY|MDB_NOTLS, 0664), MDB_SUCCESS) << "cannot open lmdb "
+        MDB_RDONLY, 0664), MDB_SUCCESS) << "cannot open lmdb "
     << proto.data_param().path();
   CHECK_EQ(mdb_txn_begin(mdb_env_, NULL, MDB_RDONLY, &mdb_txn_), MDB_SUCCESS)
     << "mdb_txn_begin failed";

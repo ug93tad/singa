@@ -17,39 +17,32 @@ DECLARE_int32(client_threads);
 namespace singa{
 
 //id is the global worker id
-SingaClient::SingaClient(int global_id, Topology &topology) {
+SingaClient::SingaClient(int global_id, Topology &topology, vector<string> &hosts) {
 	//Read the config files and store endpoints
 	id_ = global_id;
 
-	for (int i=0; i<topology.worker_size(); i++){
-		WorkerConfig *worker = topology.mutable_worker(i);
-		if (worker->global_id()==id_){
-			local_id_ = worker->local_id();
-			group_id_ = worker->group_id();
-			FLAGS_client_threads = worker->threads(); 
-			break;
-		}
-	}
+	int n_workers = hosts.size() - topology.nservers();
+	int n_worker_groups = topology.nworker_groups();
+	int group_size = n_workers/n_worker_groups;
+	int server_group_size = topology.nservers()/topology.server_group_size();
+	FLAGS_client_threads = topology.worker_threads();
 
-	int n_servers = topology.server_size();
-	map<int, char*> all_servers;
+	local_id_ = (id_-topology.nservers())%group_size;//local worker id.
+	group_id_ = (id_-topology.nservers())/group_size;
 
-	for (int i = 0; i < n_servers; i++) {
-		ServerConfig *server = topology.mutable_server(i);
+	VLOG(3) << "Parsing client config for "<<hosts[id_];
+
+	//connect to all server in the server group group_id_
+	int start_server_idx = group_id_*server_group_size;
+	int end_server_idx = start_server_idx+server_group_size;
+
+	for (int i = start_server_idx; i < end_server_idx; i++) {
 		char *neighbor_endpoint = (char*) malloc(256);
-		sprintf(neighbor_endpoint, "tcp://%s:%d", server->ip().c_str(),
-				server->port());
-		all_servers[server->id()] = neighbor_endpoint;
+		sprintf(neighbor_endpoint, "tcp://%s:%d", hosts[i].c_str(), topology.port());
+		neighbors_.push_back(neighbor_endpoint);
+		VLOG(3) << "Worker neighbor (server): "<<neighbor_endpoint;
 	}
 
-	for (int i=0; i< topology.server_group_size(); i++){
-		ServerSet *server_set = topology.mutable_server_group(i);
-		if (server_set->id()==group_id_){
-			for (int j=0; j<server_set->neighbor_size(); j++)
-				neighbors_.push_back(all_servers[server_set->neighbor(j)]);
-			break;
-		}
-	}
 	sprintf(backend_endpoint_, "inproc://singanus%d",id_);
 
 	//Create shared paramshard

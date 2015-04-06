@@ -3,7 +3,7 @@ package singa;
 message Topology{
 	required string hostfile = 1;	
 	required int32 nservers = 2; 
-	repeated int32 nworker_groups = 3;
+	required int32 nworker_groups = 3;
 	repeated int32 nserver_groups = 4;  
 	repeated ServerGroup server_group = 5;
 	required int32 port = 6; 

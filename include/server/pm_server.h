@@ -6,10 +6,12 @@
 #include <memory>
 #include <vector>
 #include <map>
+#include <string.h>
 #include "utils/param_shard.h"
 #include "proto/topology.pb.h"
 #include "utils/pm_base.h"
 using std::vector;
+using std::string;
 using std::shared_ptr;
 using google::protobuf::Message;
 
@@ -88,7 +90,7 @@ public:
  */
 class SingaServer{
 public:
-	SingaServer(int id, Topology &topology); /**< Read from topology config file */
+	SingaServer(int id, Topology &topology, vector<string> &hosts); /**< Read from topology config file */
 	void StartServer();
 	ParamShard* param_shard(){ return param_shard_;} /** To be shared among PMBase object at each thread */
 	int id(){ return id_;}
