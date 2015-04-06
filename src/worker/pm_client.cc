@@ -9,28 +9,17 @@
 #include <fcntl.h>
 #include "worker/pm_client.h"
 #include "gflags/gflags.h"
-#include "proto/topology.pb.h"
 #include <glog/logging.h>
 
 DECLARE_string(topology_config);
 DECLARE_int32(client_threads);
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
-using namespace google::protobuf::io;
-using google::protobuf::TextFormat;
 
 namespace singa{
 
 //id is the global worker id
-SingaClient::SingaClient(int global_id) {
+SingaClient::SingaClient(int global_id, Topology &topology) {
 	//Read the config files and store endpoints
 	id_ = global_id;
-
-	//Read Topology message from the file
-	int fd = open(FLAGS_topology_config.c_str(), O_RDONLY);
-	assert(fd);
-	Topology topology;
-	TextFormat::Parse(new FileInputStream(fd), &topology);
 
 	for (int i=0; i<topology.worker_size(); i++){
 		WorkerConfig *worker = topology.mutable_worker(i);

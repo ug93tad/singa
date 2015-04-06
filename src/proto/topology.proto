@@ -1,27 +1,18 @@
 package singa;
 
-message ServerConfig{
-	required int32 id = 1; 
-	required string ip = 2; 
-	required int32 port = 3; 
-	repeated int32 neighbor = 4; //upstream neighbors
-	required int32 sync_interval = 5; //how many update (per Param) before syncing
-	required int32 threads = 6; 
-}
-
-message ServerSet{
-	required int32 id = 1; 
-	repeated int32 neighbor = 2; //set of primary server
-}
-
-message WorkerConfig{
-	required int32 global_id = 1; //node id
-	required int32 local_id = 2; //id in the group
-	required int32 group_id = 3; //ServerSet ID
-	required int32 threads = 4; 
-}
 message Topology{
-	repeated ServerConfig server = 5; //parameter server network
-	repeated WorkerConfig worker = 6; 	
-	repeated ServerSet server_group = 7; 
+	required string hostfile = 1;	
+	required int32 nservers = 2; 
+	repeated int32 nworker_groups = 3;
+	repeated int32 nserver_groups = 4;  
+	repeated ServerGroup server_group = 5;
+	required int32 port = 6; 
+	required int32 server_threads = 7; 
+	required int32 worker_threads = 8; 
+}
+
+message ServerGroup{
+	required int32 id = 9; 	
+	required int32 sync_interval = 10; 
+	repeated int32 neighbor = 11;
 }

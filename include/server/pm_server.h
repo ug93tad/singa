@@ -88,7 +88,7 @@ public:
  */
 class SingaServer{
 public:
-	SingaServer(int id); /**< Read from topology config file */
+	SingaServer(int id, Topology &topology); /**< Read from topology config file */
 	void StartServer();
 	ParamShard* param_shard(){ return param_shard_;} /** To be shared among PMBase object at each thread */
 	int id(){ return id_;}

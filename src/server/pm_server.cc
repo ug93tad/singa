@@ -5,9 +5,6 @@
  *      Author: dinhtta
  */
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include <string.h>
@@ -16,24 +13,14 @@
 #include "server/pm_server.h"
 #include "proto/topology.pb.h"
 
-#include <google/protobuf/text_format.h>
-#include <google/protobuf/io/zero_copy_stream_impl.h>
 DECLARE_string(topology_config);
 DECLARE_int32(server_threads);
 
-using namespace google::protobuf::io;
-using google::protobuf::TextFormat;
-
 namespace singa{
 
-SingaServer::SingaServer(int id){
+SingaServer::SingaServer(int id, Topology &topology){
 	id_ = id;
 
-	//Read Topology message from the file
-	int fd = open(FLAGS_topology_config.c_str(),O_RDONLY);
-	assert(fd!=-1);
-	Topology topology;
-	TextFormat::Parse(new FileInputStream(fd), &topology);
 	int n_servers = topology.server_size();	
 	map<int, char*> other_servers;
 

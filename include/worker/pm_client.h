@@ -7,6 +7,7 @@
 #include <map>
 #include "utils/param_shard.h"
 #include "utils/pm_base.h"
+#include "proto/topology.pb.h"
 
 using std::vector;
 using std::shared_ptr;
@@ -74,7 +75,7 @@ public:
  */
 class SingaClient {
 public:
-	SingaClient(int worker_id);
+	SingaClient(int worker_id, Topology &topology);
 	void StartClient();
 
 	int id() {

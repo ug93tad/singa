@@ -1,3 +1,7 @@
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
 #include <gflags/gflags.h>
 #include <glog/logging.h>
 #include "utils/cluster.h"
@@ -9,7 +13,11 @@
 #include "worker/pm_client.h"
 #include "worker/worker.h"
 #include <string.h>
+#include <google/protobuf/text_format.h>
+#include <google/protobuf/io/zero_copy_stream_impl.h>
 
+using namespace google::protobuf::io;
+using google::protobuf::TextFormat;
 
 /**
  * Testing put/get/update performance of the new zeromq-based parameter
@@ -31,9 +39,10 @@ DEFINE_int32(node_id, 0, "ID of the node, client or server");
 DEFINE_int32(primary_set, 0, "ID of the primary server set (for client mode only)");
 
 /**
- * test_pm --mode=client/server --node_id=... [--primary_set==XXX]
  *
- * primary_set is applicable only to client/worker
+ * Read the topology file in, and start the Client or server respectively.
+ *
+ * test_pm --node_id <id>
  */
 
 
@@ -42,18 +51,22 @@ DEFINE_int32(primary_set, 0, "ID of the primary server set (for client mode only
 #endif
 
 int main(int argc, char **argv) {
-  //FLAGS_logtostderr = 1;
-  google::InitGoogleLogging(argv[0]);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
+	google::InitGoogleLogging(argv[0]);
+	gflags::ParseCommandLineFlags(&argc, &argv, true);
+	FLAGS_logtostderr = 1;
 
-  FLAGS_logtostderr = 1; 
-  if (strcmp(FLAGS_mode.c_str(),"client")==0){
-	  singa::SingaClient *client = new singa::SingaClient(FLAGS_node_id);
-	  client->StartClient();
-  }
-  else{
-	  singa::SingaServer *server = new singa::SingaServer(FLAGS_node_id);
-	  server->StartServer();
-  }
-  return 0;
+	//Read in the topology file
+	int fd = open(FLAGS_topology_config.c_str(), O_RDONLY);
+	assert(fd != -1);
+	Topology topology;
+	TextFormat::Parse(new FileInputStream(fd), &topology);
+
+	if (FLAGS_node_id < topology.nserver()) {
+		singa::SingaServer *server = new singa::SingaServer(FLAGS_node_id, topology);
+		server->StartServer();
+	} else {
+		singa::SingaClient *client = new singa::SingaClient(FLAGS_node_id, topology);
+		client->StartClient();
+	}
+	return 0;
 }
