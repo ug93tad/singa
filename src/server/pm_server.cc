@@ -24,6 +24,7 @@ namespace singa{
 SingaServer::SingaServer(int id, Topology &topology, vector<string> &hosts){
 	id_ = id;
 
+	VLOG(3) << "Parsing config file for host "<<hosts[id_] << " server id = " <<id_;
 	int n_servers = topology.nservers();
 	int n_server_groups = topology.server_group_size();
 	int port = topology.port();
@@ -32,7 +33,6 @@ SingaServer::SingaServer(int id, Topology &topology, vector<string> &hosts){
 
 	map<int, char*> other_servers;
 
-	VLOG(3) << "Parsing config file for host "<<hosts[id_];
 	sprintf(frontend_endpoint_, "tcp://%s:%d", hosts[id_].c_str(), port);
 	sprintf(backend_endpoint_, "inproc://singanus%d", id_);
 
@@ -48,6 +48,7 @@ SingaServer::SingaServer(int id, Topology &topology, vector<string> &hosts){
 			char *neighbor_endpoint = (char*) malloc(256);
 			sprintf(neighbor_endpoint, "tcp://%s:%d",
 					hosts[neighbor_group_id * group_size + local_id_].c_str(), port);
+			neighbors_.push_back(neighbor_endpoint); 
 			VLOG(3) << "Neighboring server is " << neighbor_endpoint;
 			break;
 		}
@@ -62,17 +63,14 @@ void SingaServer::StartServer() {
 	zctx_t *context = zctx_new();
 	void *frontend = zsocket_new(context, ZMQ_ROUTER);
 	void *backend = zsocket_new(context, ZMQ_DEALER);
-	printf("binding to front end %s --- backend %s \n", frontend_endpoint_, backend_endpoint_);
 	int rc = zsocket_bind(frontend, frontend_endpoint_);
 	assert(rc);
 	rc = zsocket_bind(backend, backend_endpoint_);
 	assert(rc == 0);
-
 	vector<void *> neighbor_socket;
 	for (int i=0; i<neighbors_.size(); i++) {
 		void *socket = zsocket_new(context, ZMQ_DEALER);
 		zsocket_connect(socket, neighbors_[i]);
-		VLOG(3)<<"Coneccted to neighbor = "<<neighbors_[i];
 		neighbor_socket.push_back(socket);
 	}
 
@@ -100,7 +98,6 @@ void SingaServer::StartServer() {
 				break;
 
 			//send to backend
-
 			zmsg_send(&msg, backend);
 		}
 		if (items[1].revents & ZMQ_POLLIN) {
@@ -111,7 +108,6 @@ void SingaServer::StartServer() {
 			//also forward to the frontend.
 			zframe_t *first = zmsg_pop(msg);
 			if (zframe_streq(first, SYNC_MSG)) {
-				VLOG(3)<<"Sync with other " << (nsockets-2) << " servers"; 
 				for (int i=0; i<nsockets-2; i++){
 					zmsg_t *dup = zmsg_dup(msg);
 					zframe_t *id = zmsg_pop(dup);
@@ -271,6 +267,7 @@ zmsg_t* PMServer::HandleUpdate(int paramId, zmsg_t **msg) {
 		zmsg_pushstrf(param, "%d", kData);
 		zmsg_prepend(param, &thread_id);
 		zmsg_prepend(param, &identity);
+
 		zmsg_pushstr(param, this->param_shard()->sync_now(paramId)?SYNC_MSG:RESPONSE_HEADER);
 
 		//send off

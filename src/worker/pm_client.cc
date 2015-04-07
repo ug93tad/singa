@@ -150,7 +150,6 @@ void ClientThread(void *args, zctx_t *ctx, void *pipe){
 	void *backend = zsocket_new(ctx, ZMQ_DEALER);
 	int rc = zsocket_connect(backend, client->backend_endpoint());
 	assert(rc==0);
-	printf("Starting Client thread ...\n");
 	//Create PMClient object
 	PMClient *pmclient = new PMClient(client->id(), client->param_shard(), backend);
 

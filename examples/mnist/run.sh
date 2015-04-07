@@ -23,8 +23,8 @@ then
   do
    	cmd="source ~/.bash_profile; touch $singa_dir/$i.lock;\
 		$exec_path \
-		--topology_config=$script_dir/topology.conf \
-		--mode=${params[$i]}  --node_id=$i --v=3 > /data0/anh/log_$i 2>&1"
+		--topology_config=$script_dir/topology.conf --hostfile=$script_dir/hostfile\
+	        --node_id=$i --v=3 > /data0/anh/log_$i 2>&1"
     	echo ${hosts[$i]} $ssh_options  $cmd
     	ssh $ssh_options ${hosts[$i]} $cmd & 
   done

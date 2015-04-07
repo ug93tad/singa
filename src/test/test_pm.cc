@@ -61,19 +61,21 @@ int main(int argc, char **argv) {
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
 	FLAGS_logtostderr = 1;
 
+
 	//Read in the topology file
 	int fd = open(FLAGS_topology_config.c_str(), O_RDONLY);
 	assert(fd != -1);
 	singa::Topology topology;
 	TextFormat::Parse(new FileInputStream(fd), &topology);
 
+
 	//read host file
-	ifstream hostfile(topology.hostfile().c_str());
+	ifstream hostfile(FLAGS_hostfile.c_str());
 	string host;
 	vector<string> hosts;
 	while (getline(hostfile, host))
 		hosts.push_back(host);
-
+	
 	if (FLAGS_node_id < topology.nservers()) {
 		singa::SingaServer *server = new singa::SingaServer(FLAGS_node_id, topology, hosts);
 		server->StartServer();
@@ -81,5 +83,6 @@ int main(int argc, char **argv) {
 		singa::SingaClient *client = new singa::SingaClient(FLAGS_node_id, topology, hosts);
 		client->StartClient();
 	}
+	
 	return 0;
 }
