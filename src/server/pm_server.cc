@@ -43,13 +43,15 @@ SingaServer::SingaServer(int id, Topology &topology, vector<string> &hosts){
 		ServerGroup *group = topology.mutable_server_group(i);
 		if (group->id()==(id_/group_size)){//the group where this server belongs
 			sync_interval = group->sync_interval();
-			neighbor_group_id = group->neighbor(0);//assume only one neighbor
-
-			char *neighbor_endpoint = (char*) malloc(256);
-			sprintf(neighbor_endpoint, "tcp://%s:%d",
-					hosts[neighbor_group_id * group_size + local_id_].c_str(), port);
-			neighbors_.push_back(neighbor_endpoint); 
-			VLOG(3) << "Neighboring server is " << neighbor_endpoint;
+			if (group->neighbor_size()>0){
+				neighbor_group_id = group->neighbor(0);//assume only one neighbor
+	
+				char *neighbor_endpoint = (char*) malloc(256);
+				sprintf(neighbor_endpoint, "tcp://%s:%d",
+						hosts[neighbor_group_id * group_size + local_id_].c_str(), port);
+				neighbors_.push_back(neighbor_endpoint); 
+				VLOG(3) << "Neighboring server is " << neighbor_endpoint;
+			}
 			break;
 		}
 	}
@@ -140,6 +142,8 @@ void SingaServer::StartServer() {
 	zsocket_destroy(context, backend);
 	for (int i=0; i<nsockets-2; i++)
 		zsocket_destroy(context, neighbor_socket[i]);
+	LOG(INFO) << "Out of context"; 
+	exit(1); 
 	zctx_destroy (&context);
 }
 
@@ -193,6 +197,7 @@ void ServerThread(void *args, zctx_t *ctx, void *pipe){
 		zmsg_t *data;
 		switch (type){
 			case kPut:
+				VLOG(3) << "Handle PUT"; 
 				data = pmserver->HandlePut(paramId, &msg);
 				break;
 			case kGet:

@@ -52,10 +52,11 @@ DEFINE_int32(primary_set, 0, "ID of the primary server set (for client mode only
  */
 
 
+/**
 #ifndef FLAGS_v
   DEFINE_int32(v, 3, "vlog controller");
 #endif
-
+**/
 int main(int argc, char **argv) {
 	google::InitGoogleLogging(argv[0]);
 	gflags::ParseCommandLineFlags(&argc, &argv, true);
@@ -74,8 +75,10 @@ int main(int argc, char **argv) {
 	string host;
 	vector<string> hosts;
 	while (getline(hostfile, host))
+	{
 		hosts.push_back(host);
-	
+		LOG(INFO) << "added host "<<host<< " vs nservers = "<<topology.nservers()<<" id = "<<FLAGS_node_id; 
+	}
 	if (FLAGS_node_id < topology.nservers()) {
 		singa::SingaServer *server = new singa::SingaServer(FLAGS_node_id, topology, hosts);
 		server->StartServer();

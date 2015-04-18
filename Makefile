@@ -9,7 +9,7 @@ INCLUDE_DIRS := $(HOME_DIR)/include ./include
 CXX := g++
 
 ######################Setting Varialbes#######################################
-LIBRARIES := glog gflags protobuf rt opencv_highgui opencv_imgproc opencv_core zmq czmq lmdb openblas
+LIBRARIES := glog gflags protobuf rt opencv_highgui opencv_imgproc opencv_core zmq czmq lmdb blas
 
 LDFLAGS := $(foreach librarydir, $(LIBRARY_DIRS), -L$(librarydir)) $(foreach library, $(LIBRARIES), -l$(library))
 # Folder to store compiled files

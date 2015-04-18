@@ -61,12 +61,14 @@ void SingaClient::StartClient(){
 		VLOG(3) << "Connected to neighbor " <<neighbors_[i];
 		assert(rc==0);
 		server_sockets.push_back(socket);
+		zsocket_set_linger(socket,0); 
 	}
 
 	//Create and bind backend socket
 	void *backend = zsocket_new(context, ZMQ_ROUTER);
 	rc = zsocket_bind(backend, backend_endpoint_);
 	assert(rc==0);
+	zsocket_set_linger(backend,0); 
 
 	//Start client threads
 	for (int i=0; i<FLAGS_client_threads; i++){
@@ -117,9 +119,13 @@ void SingaClient::StartClient(){
 		}
 	}
 
+	LOG(INFO) << "Out of message loop"; 
 	zsocket_destroy(context, backend);
-	for (int i=0; i<nsockets-1; i++)
+	for (int i=0; i<nsockets-1; i++){
 		zsocket_destroy(context, server_sockets[i]);
+	}
+	LOG(INFO) << "Destroy server sockets"; 
+	exit(1); 
 	zctx_destroy(&context);
 }
 
@@ -145,7 +151,7 @@ int SingaClient::param_to_server_id(int paramId){
 
 void ClientThread(void *args, zctx_t *ctx, void *pipe){
 	SingaClient *client = static_cast<SingaClient*>(args);
-
+	
 	//Create back-end socket and connect to the main thread
 	void *backend = zsocket_new(ctx, ZMQ_DEALER);
 	int rc = zsocket_connect(backend, client->backend_endpoint());
